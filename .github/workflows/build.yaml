@@ -70,6 +70,7 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly
+          components: clippy
           override: true
 
       - name: Run clippy
@@ -106,4 +107,4 @@ jobs:
           BRANCH: gh-pages
           FOLDER: target/doc
           SINGLE_COMMIT: true
-    if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.events.repository.master_branch)
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.events.repository.master_branch)
