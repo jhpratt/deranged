@@ -35,42 +35,131 @@
 )]
 #![doc(test(attr(deny(warnings))))]
 
-use std::{convert::TryFrom, error::Error, fmt};
+use core::{
+    convert::{TryFrom, TryInto},
+    fmt,
+};
+use std::error::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct OutOfRange;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TryFromIntError;
 
-impl fmt::Display for OutOfRange {
+impl fmt::Display for TryFromIntError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("value out of range")
+        f.write_str("out of range integral type conversion attempted")
     }
 }
-impl Error for OutOfRange {}
+impl Error for TryFromIntError {}
 
-#[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct RangedU8<const MIN: u8, const MAX: u8>(u8);
-
-impl<const MIN: u8, const MAX: u8> fmt::Debug for RangedU8<MIN, MAX> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl<const MIN: u8, const MAX: u8> From<RangedU8<MIN, MAX>> for u8 {
-    fn from(value: RangedU8<MIN, MAX>) -> Self {
-        value.0
-    }
-}
-
-impl<const MIN: u8, const MAX: u8> TryFrom<u8> for RangedU8<MIN, MAX> {
-    type Error = OutOfRange;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        if value < MIN || value > MAX {
-            Err(OutOfRange)
-        } else {
-            Ok(Self(value))
+macro_rules! impl_ranged {
+    ($(
+        $type:ident($internal:ident): {
+            into: [$($into:ident),* $(,)?]
+            try_into: [$($try_into:ident),* $(,)?]
+            try_from: [$($try_from:ident),* $(,)?]
         }
+    )*) => {$(
+        #[repr(transparent)]
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $type<const MIN: $internal, const MAX: $internal>(
+            $internal,
+        );
+
+        impl<const MIN: $internal, const MAX: $internal> fmt::Debug for $type<MIN, MAX> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+
+        $(impl<const MIN: $internal, const MAX: $internal> From<$type<MIN,MAX>> for $into {
+            fn from(value: $type<MIN, MAX>) -> Self {
+                value.0.into()
+            }
+        })*
+
+        $(impl<const MIN: $internal, const MAX: $internal> TryFrom<$type<MIN, MAX>> for $try_into {
+            type Error = TryFromIntError;
+
+            fn try_from(value: $type<MIN, MAX>) -> Result<Self, Self::Error> {
+                if (MIN..=MAX).contains(&value.0) {
+                    Ok(value.try_into()?)
+                } else {
+                    Err(TryFromIntError)
+                }
+            }
+        })*
+
+        $(impl<const MIN: $internal, const MAX: $internal> TryFrom<$try_from> for $type<MIN, MAX> {
+            type Error = TryFromIntError;
+
+            fn try_from(value: $try_from) -> Result<Self, Self::Error> {
+                let value = match TryInto::<$internal>::try_into(value) {
+                    Ok(value) => value,
+                    Err(_) => return Err(TryFromIntError)
+                };
+
+                if value < MIN || value > MAX {
+                    Err(TryFromIntError)
+                } else {
+                    match TryFrom::try_from(value) {
+                        Ok(value) => Ok(value),
+                        Err(_) => Err(TryFromIntError),
+                    }
+                }
+            }
+        })*
+    )*};
+}
+
+impl_ranged! {
+    RangedU8(u8): {
+        into: [u8, u16, u32, u64, u128, i16, i32, i64, i128]
+        try_into: [i8]
+        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+    }
+    RangedU16(u16): {
+        into: [u16, u32, u64, u128, i32, i64, i128]
+        try_into: [u8, i8, i16]
+        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+    }
+    RangedU32(u32): {
+        into: [u32, u64, u128, i64, i128]
+        try_into: [u8, u16, i8, i16, i32]
+        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+    }
+    RangedU64(u64): {
+        into: [u64, u128, i128]
+        try_into: [u8, u16, u32, i8, i16, i32, i64]
+        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+    }
+    RangedU128(u128): {
+        into: [u128]
+        try_into: [u8, u16, u32, u64, i8, i16, i32, i64, i128]
+        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+    }
+    RangedI8(i8): {
+        into: [i8, i16, i32, i64, i128]
+        try_into: [u8, u16, u32, u64, u128]
+        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+    }
+    RangedI16(i16): {
+        into: [i16, i32, i64, i128]
+        try_into: [u8, u16, u32, u64, u128, i8]
+        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+    }
+    RangedI32(i32): {
+        into: [i32, i64, i128]
+        try_into: [u8, u16, u32, u64, u128, i8, i16]
+        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+    }
+    RangedI64(i64): {
+        into: [i64, i128]
+        try_into: [u8, u16, u32, u64, u128, i8, i16, i32]
+        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+    }
+    RangedI128(i128): {
+        into: [i128]
+        try_into: [u8, u16, u32, u64, u128, i8, i16, i32, i64]
+        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
 }
