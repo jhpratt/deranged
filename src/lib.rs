@@ -51,19 +51,150 @@ impl fmt::Display for TryFromIntError {
 }
 impl Error for TryFromIntError {}
 
+macro_rules! const_try_opt {
+    ($e:expr) => {
+        match $e {
+            Some(value) => value,
+            None => return None,
+        }
+    };
+}
+
+macro_rules! if_signed {
+    (signed) => {};
+}
+
 macro_rules! impl_ranged {
     ($(
-        $type:ident($internal:ident): {
+        $([$maybe_signed:ident])? $type:ident($internal:ident): {
             into: [$($into:ident),* $(,)?]
             try_into: [$($try_into:ident),* $(,)?]
             try_from: [$($try_from:ident),* $(,)?]
         }
     )*) => {$(
+        /// An integer that is known to be in the range `MIN..=MAX`.
         #[repr(transparent)]
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct $type<const MIN: $internal, const MAX: $internal>(
             $internal,
         );
+
+        impl<const MIN: $internal, const MAX: $internal> $type<MIN, MAX> {
+            /// Creates a ranged integer without checking the value.
+            ///
+            /// # Safety
+            ///
+            /// The value must be within the range `MIN..=MAX`.
+            pub const unsafe fn new_unchecked(value: $internal) -> Self {
+                Self(value)
+            }
+
+            /// Creates a ranged integer if the given value is in the range
+            /// `MIN..=MAX`.
+            pub const fn new(value: $internal) -> Option<Self> {
+                if value < MIN || value > MAX {
+                    None
+                } else {
+                    Some(Self(value))
+                }
+            }
+
+            /// Returns the value as a primitive type.
+            pub const fn get(self) -> $internal {
+                self.0
+            }
+
+            /// Checked integer addition. Computes `self + rhs`, returning
+            /// `None` if the resulting value is out of range.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn checked_add(self, rhs: $internal) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_add(rhs)))
+            }
+
+            /// Checked integer addition. Computes `self - rhs`, returning
+            /// `None` if the resulting value is out of range.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn checked_sub(self, rhs: $internal) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_sub(rhs)))
+            }
+
+            /// Checked integer addition. Computes `self * rhs`, returning
+            /// `None` if the resulting value is out of range.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn checked_mul(self, rhs: $internal) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_mul(rhs)))
+            }
+
+            /// Checked integer addition. Computes `self / rhs`, returning
+            /// `None` if `rhs == 0` or if the resulting value is out of range.
+            #[allow(clippy::missing_const_for_fn)] // false positive
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub fn checked_div(self, rhs: $internal) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_div(rhs)))
+            }
+
+            /// Checked Euclidean division. Computes `self.div_euclid(rhs)`,
+            /// returning `None` if `rhs == 0` or if the resulting value is out
+            /// of range.
+            #[allow(clippy::missing_const_for_fn)] // false positive
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub fn checked_div_euclid(self, rhs: $internal) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_div_euclid(rhs)))
+            }
+
+            /// Checked integer remainder. Computes `self % rhs`, returning
+            /// `None` if `rhs == 0` or if the resulting value is out of range.
+            #[allow(clippy::missing_const_for_fn)] // false positive
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub fn checked_rem(self, rhs: $internal) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_rem(rhs)))
+            }
+
+            /// Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`,
+            /// returning `None` if `rhs == 0` or if the resulting value is out
+            /// of range.
+            #[allow(clippy::missing_const_for_fn)] // false positive
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub fn checked_rem_euclid(self, rhs: $internal) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_rem_euclid(rhs)))
+            }
+
+            /// Checked negation. Computes `-self`, returning `None` if the
+            /// resulting value is out of range.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn checked_neg(self) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_neg()))
+            }
+
+            /// Checked shift left. Computes `self << rhs`, returning `None` if
+            /// the resulting value is out of range.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_shl(rhs)))
+            }
+
+            /// Checked shift right. Computes `self >> rhs`, returning `None` if
+            /// the resulting value is out of range.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_shr(rhs)))
+            }
+
+            $(if_signed!($maybe_signed);
+            /// Checked absolute value. Computes `self.abs()`, returning `None`
+            /// if the resulting value is out of range.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn checked_abs(self) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_abs()))
+            })?
+
+            /// Checked exponentiation. Computes `self.pow(exp)`, returning
+            /// `None` if the resulting value is out of range.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn checked_pow(self, exp: u32) -> Option<Self> {
+                Self::new(const_try_opt!(self.0.checked_pow(exp)))
+            }
+        }
 
         impl<const MIN: $internal, const MAX: $internal> fmt::Debug for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -137,27 +268,27 @@ impl_ranged! {
         try_into: [u8, u16, u32, u64, i8, i16, i32, i64, i128]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    RangedI8(i8): {
+    [signed] RangedI8(i8): {
         into: [i8, i16, i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    RangedI16(i16): {
+    [signed] RangedI16(i16): {
         into: [i16, i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128, i8]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    RangedI32(i32): {
+    [signed] RangedI32(i32): {
         into: [i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128, i8, i16]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    RangedI64(i64): {
+    [signed] RangedI64(i64): {
         into: [i64, i128]
         try_into: [u8, u16, u32, u64, u128, i8, i16, i32]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    RangedI128(i128): {
+    [signed] RangedI128(i128): {
         into: [i128]
         try_into: [u8, u16, u32, u64, u128, i8, i16, i32, i64]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
