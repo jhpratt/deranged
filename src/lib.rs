@@ -99,6 +99,16 @@ macro_rules! impl_ranged {
                 }
             }
 
+            const fn new_saturating(value: $internal) -> Self {
+                Self(if value < MIN {
+                    MIN
+                } else if value > MAX {
+                    MAX
+                } else {
+                    value
+                })
+            }
+
             /// Returns the value as a primitive type.
             pub const fn get(self) -> $internal {
                 self.0
@@ -193,6 +203,50 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_pow(self, exp: u32) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_pow(exp)))
+            }
+
+            /// Saturating integer addition. Computes `self + rhs`, saturating
+            /// at the numeric bounds.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn saturating_add(self, rhs: $internal) -> Self {
+                Self::new_saturating(self.0.saturating_add(rhs))
+            }
+
+            /// Saturating integer subtraction. Computes `self - rhs`,
+            /// saturating at the numeric bounds.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn saturating_sub(self, rhs: $internal) -> Self {
+                Self::new_saturating(self.0.saturating_sub(rhs))
+            }
+
+            $(if_signed!($maybe_signed);
+            /// Saturating integer negation. Computes `self - rhs`, saturating
+            /// at the numeric bounds.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn saturating_neg(self) -> Self {
+                Self::new_saturating(self.0.saturating_neg())
+            })?
+
+            $(if_signed!($maybe_signed);
+            /// Saturating absolute value. Computes `self.abs()`, saturating at
+            /// the numeric bounds.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn saturating_abs(self) -> Self {
+                Self::new_saturating(self.0.saturating_abs())
+            })?
+
+            /// Saturating integer multiplication. Computes `self * rhs`,
+            /// saturating at the numeric bounds.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn saturating_mul(self, rhs: $internal) -> Self {
+                Self::new_saturating(self.0.saturating_mul(rhs))
+            }
+
+            /// Saturating integer exponentiation. Computes `self.pow(exp)`,
+            /// saturating at the numeric bounds.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const fn saturating_pow(self, exp: u32) -> Self {
+                Self::new_saturating(self.0.saturating_pow(exp))
             }
         }
 
