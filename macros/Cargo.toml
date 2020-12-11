@@ -1,20 +1,18 @@
 [package]
-name = "deranged"
+name = "deranged-macros"
 version = "0.1.0"
 authors = ["Jacob Pratt <jacob@jhpratt.dev>"]
 edition = "2018"
-repository = "https://github.com/jhpratt/deranged"
 keywords = ["integer", "int", "range"]
-readme = "README.md"
+readme = "../README.md"
 license = "MIT OR Apache-2.0"
 description = "Ranged integers"
+
+[lib]
+proc-macro = true
 
 [package.metadata.docs.rs]
 all-features = true
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-deranged-macros = { version = "=0.1.0", path = "macros" }
-
-[workspace]
-members = ["macros"]

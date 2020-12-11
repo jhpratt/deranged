@@ -39,6 +39,7 @@ use core::{
     convert::{TryFrom, TryInto},
     fmt,
 };
+pub use deranged_macros::ranged_int;
 use std::error::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
