@@ -81,6 +81,12 @@ macro_rules! impl_ranged {
         );
 
         impl<const MIN: $internal, const MAX: $internal> $type<MIN, MAX> {
+            /// The smallest value that can be represented by this type.
+            pub const MIN: Self = Self(MIN);
+
+            /// The largest value that can be represented by this type.
+            pub const MAX: Self = Self(MAX);
+
             /// Creates a ranged integer without checking the value.
             ///
             /// # Safety
