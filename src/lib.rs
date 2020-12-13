@@ -269,6 +269,18 @@ macro_rules! impl_ranged {
             }
         }
 
+        impl<const MIN: $internal, const MAX: $internal> PartialEq<$internal> for $type<MIN, MAX> {
+            fn eq(&self, other: &$internal) -> bool {
+                self.0 == *other
+            }
+        }
+
+        impl<const MIN: $internal, const MAX: $internal> PartialEq<$type<MIN, MAX>> for $internal {
+            fn eq(&self, other: &$type<MIN, MAX>) -> bool {
+                *self == other.0
+            }
+        }
+
         impl<const MIN: $internal, const MAX: $internal> fmt::Binary for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 self.0.fmt(f)
