@@ -104,59 +104,28 @@ impl Type {
     fn tokens_from_min_max(min: &Number, max: &Number) -> Result<TokenStream, TokenStream> {
         let (type_name_token, min_token, max_token);
 
+        macro_rules! set_variables {
+            ($type_name:ident, $literal_new:ident, $to_literal:ident) => {{
+                type_name_token =
+                    TokenTree::Ident(Ident::new(stringify!($type_name), Span::call_site()));
+                min_token = TokenTree::Literal(Literal::$literal_new(min.$to_literal().unwrap()));
+                max_token = TokenTree::Literal(Literal::$literal_new(max.$to_literal().unwrap()));
+            }};
+        }
+
         // The validity of the casts are verified by the enum discriminant.
         #[allow(clippy::unwrap_used)]
         match Self::from_min_max(min, max)? {
-            Self::U8 => {
-                type_name_token = TokenTree::Ident(Ident::new("RangedU8", Span::call_site()));
-                min_token = TokenTree::Literal(Literal::u8_unsuffixed(min.to_u8().unwrap()));
-                max_token = TokenTree::Literal(Literal::u8_unsuffixed(max.to_u8().unwrap()));
-            }
-            Self::U16 => {
-                type_name_token = TokenTree::Ident(Ident::new("RangedU16", Span::call_site()));
-                min_token = TokenTree::Literal(Literal::u16_unsuffixed(min.to_u16().unwrap()));
-                max_token = TokenTree::Literal(Literal::u16_unsuffixed(max.to_u16().unwrap()));
-            }
-            Self::U32 => {
-                type_name_token = TokenTree::Ident(Ident::new("RangedU32", Span::call_site()));
-                min_token = TokenTree::Literal(Literal::u32_unsuffixed(min.to_u32().unwrap()));
-                max_token = TokenTree::Literal(Literal::u32_unsuffixed(max.to_u32().unwrap()));
-            }
-            Self::U64 => {
-                type_name_token = TokenTree::Ident(Ident::new("RangedU64", Span::call_site()));
-                min_token = TokenTree::Literal(Literal::u64_unsuffixed(min.to_u64().unwrap()));
-                max_token = TokenTree::Literal(Literal::u64_unsuffixed(max.to_u64().unwrap()));
-            }
-            Self::U128 => {
-                type_name_token = TokenTree::Ident(Ident::new("RangedU128", Span::call_site()));
-                min_token = TokenTree::Literal(Literal::u128_unsuffixed(min.to_u128().unwrap()));
-                max_token = TokenTree::Literal(Literal::u128_unsuffixed(max.to_u128().unwrap()));
-            }
-            Self::I8 => {
-                type_name_token = TokenTree::Ident(Ident::new("RangedI8", Span::call_site()));
-                min_token = TokenTree::Literal(Literal::i8_unsuffixed(min.to_i8().unwrap()));
-                max_token = TokenTree::Literal(Literal::i8_unsuffixed(max.to_i8().unwrap()));
-            }
-            Self::I16 => {
-                type_name_token = TokenTree::Ident(Ident::new("RangedI16", Span::call_site()));
-                min_token = TokenTree::Literal(Literal::i16_unsuffixed(min.to_i16().unwrap()));
-                max_token = TokenTree::Literal(Literal::i16_unsuffixed(max.to_i16().unwrap()));
-            }
-            Self::I32 => {
-                type_name_token = TokenTree::Ident(Ident::new("RangedI32", Span::call_site()));
-                min_token = TokenTree::Literal(Literal::i32_unsuffixed(min.to_i32().unwrap()));
-                max_token = TokenTree::Literal(Literal::i32_unsuffixed(max.to_i32().unwrap()));
-            }
-            Self::I64 => {
-                type_name_token = TokenTree::Ident(Ident::new("RangedI64", Span::call_site()));
-                min_token = TokenTree::Literal(Literal::i64_unsuffixed(min.to_i64().unwrap()));
-                max_token = TokenTree::Literal(Literal::i64_unsuffixed(max.to_i64().unwrap()));
-            }
-            Self::I128 => {
-                type_name_token = TokenTree::Ident(Ident::new("RangedI128", Span::call_site()));
-                min_token = TokenTree::Literal(Literal::i128_unsuffixed(min.to_i128().unwrap()));
-                max_token = TokenTree::Literal(Literal::i128_unsuffixed(max.to_i128().unwrap()));
-            }
+            Self::U8 => set_variables!(RangedU8, u8_unsuffixed, to_u8),
+            Self::U16 => set_variables!(RangedU16, u16_unsuffixed, to_u16),
+            Self::U32 => set_variables!(RangedU32, u32_unsuffixed, to_u32),
+            Self::U64 => set_variables!(RangedU64, u64_unsuffixed, to_u64),
+            Self::U128 => set_variables!(RangedU128, u128_unsuffixed, to_u128),
+            Self::I8 => set_variables!(RangedI8, i8_unsuffixed, to_i8),
+            Self::I16 => set_variables!(RangedI16, i16_unsuffixed, to_i16),
+            Self::I32 => set_variables!(RangedI32, i32_unsuffixed, to_i32),
+            Self::I64 => set_variables!(RangedI64, i64_unsuffixed, to_i64),
+            Self::I128 => set_variables!(RangedI128, i128_unsuffixed, to_i128),
         }
 
         Ok([
