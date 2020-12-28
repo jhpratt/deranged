@@ -1,4 +1,3 @@
-#![feature(min_const_generics)]
 #![deny(
     anonymous_parameters,
     clippy::all,
