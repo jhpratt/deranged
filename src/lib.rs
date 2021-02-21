@@ -34,12 +34,11 @@
 )]
 #![doc(test(attr(deny(warnings))))]
 
-use core::{
-    convert::{TryFrom, TryInto},
-    fmt,
-};
-pub use deranged_macros::ranged_int;
+use core::convert::{TryFrom, TryInto};
+use core::fmt;
 use std::error::Error;
+
+pub use deranged_macros::ranged_int;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TryFromIntError;

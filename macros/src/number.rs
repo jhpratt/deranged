@@ -1,5 +1,6 @@
-use crate::Sign;
 use std::convert::TryInto;
+
+use crate::Sign;
 
 pub(crate) struct Number {
     pub(crate) sign: Sign,

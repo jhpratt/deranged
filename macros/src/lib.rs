@@ -39,9 +39,10 @@
 
 mod number;
 
+use std::iter::Peekable;
+
 use number::Number;
 use proc_macro::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
-use std::iter::Peekable;
 
 macro_rules! unwrap_or_return {
     ($e:expr) => {
@@ -167,7 +168,9 @@ fn compile_error(message: &str) -> TokenStream {
 /// `TokenStream` describing the error is returned.
 fn parse_sign(iter: &mut Peekable<impl Iterator<Item = TokenTree>>) -> Result<Sign, TokenStream> {
     match iter.peek() {
-        Some(TokenTree::Punct(punct)) => {
+        Some(TokenTree::Punct(punct)) =>
+        {
+            #[allow(clippy::let_underscore_drop)]
             if punct.as_char() == '-' {
                 let _ = iter.next();
                 Ok(Sign::Negative)
