@@ -143,35 +143,31 @@ macro_rules! impl_ranged {
 
             /// Checked integer addition. Computes `self / rhs`, returning
             /// `None` if `rhs == 0` or if the resulting value is out of range.
-            #[allow(clippy::missing_const_for_fn)] // false positive
             #[must_use = "this returns the result of the operation, without modifying the original"]
-            pub fn checked_div(self, rhs: $internal) -> Option<Self> {
+            pub const fn checked_div(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_div(rhs)))
             }
 
             /// Checked Euclidean division. Computes `self.div_euclid(rhs)`,
             /// returning `None` if `rhs == 0` or if the resulting value is out
             /// of range.
-            #[allow(clippy::missing_const_for_fn)] // false positive
             #[must_use = "this returns the result of the operation, without modifying the original"]
-            pub fn checked_div_euclid(self, rhs: $internal) -> Option<Self> {
+            pub const fn checked_div_euclid(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_div_euclid(rhs)))
             }
 
             /// Checked integer remainder. Computes `self % rhs`, returning
             /// `None` if `rhs == 0` or if the resulting value is out of range.
-            #[allow(clippy::missing_const_for_fn)] // false positive
             #[must_use = "this returns the result of the operation, without modifying the original"]
-            pub fn checked_rem(self, rhs: $internal) -> Option<Self> {
+            pub const fn checked_rem(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_rem(rhs)))
             }
 
             /// Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`,
             /// returning `None` if `rhs == 0` or if the resulting value is out
             /// of range.
-            #[allow(clippy::missing_const_for_fn)] // false positive
             #[must_use = "this returns the result of the operation, without modifying the original"]
-            pub fn checked_rem_euclid(self, rhs: $internal) -> Option<Self> {
+            pub const fn checked_rem_euclid(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_rem_euclid(rhs)))
             }
 
