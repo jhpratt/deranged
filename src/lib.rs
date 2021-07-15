@@ -366,6 +366,13 @@ macro_rules! impl_ranged {
                 ))
             }
         }
+
+        #[cfg(feature = "rand")]
+        impl<const MIN: $internal, const MAX: $internal> rand::distributions::Distribution<$type<MIN, MAX>> for rand::distributions::Standard {
+            fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
+                $type(rng.gen_range(MIN..=MAX))
+            }
+        }
     )*};
 }
 
