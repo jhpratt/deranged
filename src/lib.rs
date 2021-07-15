@@ -357,7 +357,11 @@ macro_rules! impl_ranged {
         }
 
         #[cfg(feature = "serde")]
-        impl<'de, const MIN: $internal, const MAX: $internal> serde::Deserialize<'de> for $type<MIN, MAX> {
+        impl<
+            'de,
+            const MIN: $internal,
+            const MAX: $internal,
+        > serde::Deserialize<'de> for $type<MIN, MAX> {
             fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                 let internal = <$internal>::deserialize(deserializer)?;
                 Self::new(internal).ok_or_else(|| <D::Error as serde::de::Error>::invalid_value(
@@ -368,7 +372,10 @@ macro_rules! impl_ranged {
         }
 
         #[cfg(feature = "rand")]
-        impl<const MIN: $internal, const MAX: $internal> rand::distributions::Distribution<$type<MIN, MAX>> for rand::distributions::Standard {
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > rand::distributions::Distribution<$type<MIN, MAX>> for rand::distributions::Standard {
             fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
                 $type(rng.gen_range(MIN..=MAX))
             }
