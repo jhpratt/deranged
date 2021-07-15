@@ -348,6 +348,24 @@ macro_rules! impl_ranged {
                 }
             }
         })*
+
+        #[cfg(feature = "serde")]
+        impl<const MIN: $internal, const MAX: $internal> serde::Serialize for $type<MIN, MAX> {
+            fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                self.get().serialize(serializer)
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<'de, const MIN: $internal, const MAX: $internal> serde::Deserialize<'de> for $type<MIN, MAX> {
+            fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                let internal = <$internal>::deserialize(deserializer)?;
+                Self::new(internal).ok_or_else(|| <D::Error as serde::de::Error>::invalid_value(
+                    serde::de::Unexpected::Other("integer"),
+                    &format!("an integer in the range {}..={}", MIN, MAX).as_ref()
+                ))
+            }
+        }
     )*};
 }
 
