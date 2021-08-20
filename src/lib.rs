@@ -38,8 +38,6 @@ use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use std::error::Error;
 
-pub use deranged_macros::ranged_int;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TryFromIntError;
 
@@ -384,52 +382,52 @@ macro_rules! impl_ranged {
 }
 
 impl_ranged! {
-    RangedU8(u8): {
+    U8(u8): {
         into: [u8, u16, u32, u64, u128, i16, i32, i64, i128]
         try_into: [i8]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    RangedU16(u16): {
+    U16(u16): {
         into: [u16, u32, u64, u128, i32, i64, i128]
         try_into: [u8, i8, i16]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    RangedU32(u32): {
+    U32(u32): {
         into: [u32, u64, u128, i64, i128]
         try_into: [u8, u16, i8, i16, i32]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    RangedU64(u64): {
+    U64(u64): {
         into: [u64, u128, i128]
         try_into: [u8, u16, u32, i8, i16, i32, i64]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    RangedU128(u128): {
+    U128(u128): {
         into: [u128]
         try_into: [u8, u16, u32, u64, i8, i16, i32, i64, i128]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    [signed] RangedI8(i8): {
+    [signed] I8(i8): {
         into: [i8, i16, i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    [signed] RangedI16(i16): {
+    [signed] I16(i16): {
         into: [i16, i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128, i8]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    [signed] RangedI32(i32): {
+    [signed] I32(i32): {
         into: [i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128, i8, i16]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    [signed] RangedI64(i64): {
+    [signed] I64(i64): {
         into: [i64, i128]
         try_into: [u8, u16, u32, u64, u128, i8, i16, i32]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    [signed] RangedI128(i128): {
+    [signed] I128(i128): {
         into: [i128]
         try_into: [u8, u16, u32, u64, u128, i8, i16, i32, i64]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
