@@ -34,6 +34,8 @@
 )]
 #![doc(test(attr(deny(warnings))))]
 
+use core::borrow::Borrow;
+use core::cmp::Ordering;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use std::error::Error;
@@ -58,20 +60,37 @@ macro_rules! const_try_opt {
 }
 
 macro_rules! if_signed {
-    (signed) => {};
+    (true $($x:tt)*) => { $($x)*};
+    (false $($x:tt)*) => {};
+}
+
+macro_rules! article {
+    (true) => {
+        "An"
+    };
+    (false) => {
+        "A"
+    };
 }
 
 macro_rules! impl_ranged {
     ($(
-        $([$maybe_signed:ident])? $type:ident($internal:ident): {
+        $type:ident {
+            internal: $internal:ident
+            signed: $is_signed:ident
             into: [$($into:ident),* $(,)?]
             try_into: [$($try_into:ident),* $(,)?]
             try_from: [$($try_from:ident),* $(,)?]
         }
     )*) => {$(
-        /// An integer that is known to be in the range `MIN..=MAX`.
+        #[doc = concat!(
+            article!($is_signed),
+            " `",
+            stringify!($internal),
+            "` that is known to be in the range `MIN..=MAX`.",
+        )]
         #[repr(transparent)]
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Clone, Copy, Eq, Ord, Hash)]
         pub struct $type<const MIN: $internal, const MAX: $internal>(
             $internal,
         );
@@ -189,13 +208,13 @@ macro_rules! impl_ranged {
                 Self::new(const_try_opt!(self.0.checked_shr(rhs)))
             }
 
-            $(if_signed!($maybe_signed);
+            if_signed!($is_signed
             /// Checked absolute value. Computes `self.abs()`, returning `None`
             /// if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_abs(self) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_abs()))
-            })?
+            });
 
             /// Checked exponentiation. Computes `self.pow(exp)`, returning
             /// `None` if the resulting value is out of range.
@@ -218,21 +237,21 @@ macro_rules! impl_ranged {
                 Self::new_saturating(self.0.saturating_sub(rhs))
             }
 
-            $(if_signed!($maybe_signed);
+            if_signed!($is_signed
             /// Saturating integer negation. Computes `self - rhs`, saturating
             /// at the numeric bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_neg(self) -> Self {
                 Self::new_saturating(self.0.saturating_neg())
-            })?
+            });
 
-            $(if_signed!($maybe_signed);
+            if_signed!($is_signed
             /// Saturating absolute value. Computes `self.abs()`, saturating at
             /// the numeric bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_abs(self) -> Self {
                 Self::new_saturating(self.0.saturating_abs())
-            })?
+            });
 
             /// Saturating integer multiplication. Computes `self * rhs`,
             /// saturating at the numeric bounds.
@@ -261,6 +280,29 @@ macro_rules! impl_ranged {
             }
         }
 
+        impl<const MIN: $internal, const MAX: $internal> AsRef<$internal> for $type<MIN, MAX> {
+            fn as_ref(&self) -> &$internal {
+                &self.0
+            }
+        }
+
+        impl<const MIN: $internal, const MAX: $internal> Borrow<$internal> for $type<MIN, MAX> {
+            fn borrow(&self) -> &$internal {
+                &self.0
+            }
+        }
+
+        impl<
+            const MIN_A: $internal,
+            const MAX_A: $internal,
+            const MIN_B: $internal,
+            const MAX_B: $internal,
+        > PartialEq<$type<MIN_B, MAX_B>> for $type<MIN_A, MAX_A> {
+            fn eq(&self, other: &$type<MIN_B, MAX_B>) -> bool {
+                self.0 == other.0
+            }
+        }
+
         impl<const MIN: $internal, const MAX: $internal> PartialEq<$internal> for $type<MIN, MAX> {
             fn eq(&self, other: &$internal) -> bool {
                 self.0 == *other
@@ -270,6 +312,29 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> PartialEq<$type<MIN, MAX>> for $internal {
             fn eq(&self, other: &$type<MIN, MAX>) -> bool {
                 *self == other.0
+            }
+        }
+
+        impl<
+            const MIN_A: $internal,
+            const MAX_A: $internal,
+            const MIN_B: $internal,
+            const MAX_B: $internal,
+        > PartialOrd<$type<MIN_B, MAX_B>> for $type<MIN_A, MAX_A> {
+            fn partial_cmp(&self, other: &$type<MIN_B, MAX_B>) -> Option<Ordering> {
+                self.0.partial_cmp(&other.0)
+            }
+        }
+
+        impl<const MIN: $internal, const MAX: $internal> PartialOrd<$internal> for $type<MIN, MAX> {
+            fn partial_cmp(&self, other: &$internal) -> Option<Ordering> {
+                self.0.partial_cmp(other)
+            }
+        }
+
+        impl<const MIN: $internal, const MAX: $internal> PartialOrd<$type<MIN, MAX>> for $internal {
+            fn partial_cmp(&self, other: &$type<MIN, MAX>) -> Option<Ordering> {
+                self.partial_cmp(&other.0)
             }
         }
 
@@ -382,52 +447,72 @@ macro_rules! impl_ranged {
 }
 
 impl_ranged! {
-    U8(u8): {
+    U8 {
+        internal: u8
+        signed: false
         into: [u8, u16, u32, u64, u128, i16, i32, i64, i128]
         try_into: [i8]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    U16(u16): {
+    U16 {
+        internal: u16
+        signed: false
         into: [u16, u32, u64, u128, i32, i64, i128]
         try_into: [u8, i8, i16]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    U32(u32): {
+    U32 {
+        internal: u32
+        signed: false
         into: [u32, u64, u128, i64, i128]
         try_into: [u8, u16, i8, i16, i32]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    U64(u64): {
+    U64 {
+        internal: u64
+        signed: false
         into: [u64, u128, i128]
         try_into: [u8, u16, u32, i8, i16, i32, i64]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    U128(u128): {
+    U128 {
+        internal: u128
+        signed: false
         into: [u128]
         try_into: [u8, u16, u32, u64, i8, i16, i32, i64, i128]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    [signed] I8(i8): {
+    I8 {
+        internal: i8
+        signed: true
         into: [i8, i16, i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    [signed] I16(i16): {
+    I16 {
+        internal: i16
+        signed: true
         into: [i16, i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128, i8]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    [signed] I32(i32): {
+    I32 {
+        internal: i32
+        signed: true
         into: [i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128, i8, i16]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    [signed] I64(i64): {
+    I64 {
+        internal: i64
+        signed: true
         into: [i64, i128]
         try_into: [u8, u16, u32, u64, u128, i8, i16, i32]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
     }
-    [signed] I128(i128): {
+    I128 {
+        internal: i128
+        signed: true
         into: [i128]
         try_into: [u8, u16, u32, u64, u128, i8, i16, i32, i64]
         try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
