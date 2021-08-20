@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     anonymous_parameters,
     clippy::all,
@@ -38,6 +39,7 @@ use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
+#[cfg(feature = "std")]
 use std::error::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,6 +50,7 @@ impl fmt::Display for TryFromIntError {
         f.write_str("out of range integral type conversion attempted")
     }
 }
+#[cfg(feature = "std")]
 impl Error for TryFromIntError {}
 
 macro_rules! const_try_opt {
