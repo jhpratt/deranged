@@ -485,7 +485,7 @@ impl_ranged! {
         try_into: [u8, u16, u32, u64, i8, i16, i32, i64, i128]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    USize {
+    Usize {
         internal: usize
         signed: false
         into: [usize]
@@ -527,7 +527,7 @@ impl_ranged! {
         try_into: [u8, u16, u32, u64, u128, i8, i16, i32, i64]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    ISize {
+    Isize {
         internal: isize
         signed: true
         into: [isize]
