@@ -454,70 +454,84 @@ impl_ranged! {
         internal: u8
         signed: false
         into: [u8, u16, u32, u64, u128, i16, i32, i64, i128]
-        try_into: [i8]
-        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+        try_into: [usize, i8, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     U16 {
         internal: u16
         signed: false
         into: [u16, u32, u64, u128, i32, i64, i128]
-        try_into: [u8, i8, i16]
-        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+        try_into: [u8, usize, i8, i16, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     U32 {
         internal: u32
         signed: false
         into: [u32, u64, u128, i64, i128]
-        try_into: [u8, u16, i8, i16, i32]
-        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+        try_into: [u8, u16, usize, i8, i16, i32, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     U64 {
         internal: u64
         signed: false
         into: [u64, u128, i128]
-        try_into: [u8, u16, u32, i8, i16, i32, i64]
-        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+        try_into: [u8, u16, u32, usize, i8, i16, i32, i64, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     U128 {
         internal: u128
         signed: false
         into: [u128]
-        try_into: [u8, u16, u32, u64, i8, i16, i32, i64, i128]
-        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+        try_into: [u8, u16, u32, u64, usize, i8, i16, i32, i64, i128, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
+    }
+    Usize {
+        internal: usize
+        signed: false
+        into: [usize]
+        try_into: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     I8 {
         internal: i8
         signed: true
         into: [i8, i16, i32, i64, i128]
-        try_into: [u8, u16, u32, u64, u128]
-        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+        try_into: [u8, u16, u32, u64, u128, usize, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     I16 {
         internal: i16
         signed: true
         into: [i16, i32, i64, i128]
-        try_into: [u8, u16, u32, u64, u128, i8]
-        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+        try_into: [u8, u16, u32, u64, u128, usize, i8, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     I32 {
         internal: i32
         signed: true
         into: [i32, i64, i128]
-        try_into: [u8, u16, u32, u64, u128, i8, i16]
-        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+        try_into: [u8, u16, u32, u64, u128, usize, i8, i16, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     I64 {
         internal: i64
         signed: true
         into: [i64, i128]
-        try_into: [u8, u16, u32, u64, u128, i8, i16, i32]
-        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+        try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     I128 {
         internal: i128
         signed: true
         into: [i128]
-        try_into: [u8, u16, u32, u64, u128, i8, i16, i32, i64]
-        try_from: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128]
+        try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, isize]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
+    }
+    Isize {
+        internal: isize
+        signed: true
+        into: [isize]
+        try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128]
+        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
 }
