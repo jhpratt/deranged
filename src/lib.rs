@@ -453,15 +453,15 @@ impl_ranged! {
     U8 {
         internal: u8
         signed: false
-        into: [u8, u16, u32, u64, u128, i16, i32, i64, i128]
-        try_into: [usize, i8, isize]
+        into: [u8, u16, u32, u64, u128, usize, i16, i32, i64, i128, isize]
+        try_into: [i8]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     U16 {
         internal: u16
         signed: false
-        into: [u16, u32, u64, u128, i32, i64, i128]
-        try_into: [u8, usize, i8, i16, isize]
+        into: [u16, u32, u64, u128, usize, i32, i64, i128]
+        try_into: [u8, i8, i16, isize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     U32 {
@@ -495,15 +495,15 @@ impl_ranged! {
     I8 {
         internal: i8
         signed: true
-        into: [i8, i16, i32, i64, i128]
-        try_into: [u8, u16, u32, u64, u128, usize, isize]
+        into: [i8, i16, i32, i64, i128, isize]
+        try_into: [u8, u16, u32, u64, u128, usize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     I16 {
         internal: i16
         signed: true
-        into: [i16, i32, i64, i128]
-        try_into: [u8, u16, u32, u64, u128, usize, i8, isize]
+        into: [i16, i32, i64, i128, isize]
+        try_into: [u8, u16, u32, u64, u128, usize, i8]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     I32 {
