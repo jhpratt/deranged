@@ -2,7 +2,8 @@
 name = "deranged"
 version = "0.2.0"
 authors = ["Jacob Pratt <jacob@jhpratt.dev>"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.56.0"
 repository = "https://github.com/jhpratt/deranged"
 keywords = ["integer", "int", "range"]
 readme = "README.md"
