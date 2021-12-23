@@ -387,11 +387,7 @@ macro_rules! impl_ranged {
             type Error = TryFromIntError;
 
             fn try_from(value: $type<MIN, MAX>) -> Result<Self, Self::Error> {
-                if (MIN..=MAX).contains(&value.0) {
-                    Ok(value.try_into()?)
-                } else {
-                    Err(TryFromIntError)
-                }
+                value.0.try_into().map_err(|_| TryFromIntError)
             }
         })*
 
@@ -408,7 +404,7 @@ macro_rules! impl_ranged {
                     Err(TryFromIntError)
                 } else {
                     match TryFrom::try_from(value) {
-                        Ok(value) => Ok(value),
+                        Ok(value) => Ok(Self(value)),
                         Err(_) => Err(TryFromIntError),
                     }
                 }
@@ -533,5 +529,34 @@ impl_ranged! {
         into: [isize]
         try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::convert::TryFrom;
+
+    use crate::{TryFromIntError, U32};
+
+    #[test]
+    fn test_try_from_primitive_to_deranged() {
+        assert_eq!(U32::<100, 200>::try_from(50), Err(TryFromIntError));
+        assert_eq!(U32::<100, 200>::try_from(100), Ok(U32(100)));
+        assert_eq!(U32::<100, 200>::try_from(150), Ok(U32(150)));
+        assert_eq!(U32::<100, 200>::try_from(200), Ok(U32(200)));
+        assert_eq!(U32::<100, 200>::try_from(250), Err(TryFromIntError));
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_try_from_deranged_to_primitive() {
+        assert_eq!(
+            u32::try_from(U32::<1000, 2000>::new(1500).unwrap()),
+            Ok(1500)
+        );
+        assert_eq!(
+            u8::try_from(U32::<1000, 2000>::new(1500).unwrap()),
+            Err(TryFromIntError)
+        );
     }
 }
