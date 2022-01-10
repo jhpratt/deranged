@@ -68,6 +68,8 @@ impl fmt::Display for FromStrError {
         }
     }
 }
+#[cfg(feature = "std")]
+impl Error for FromStrError {}
 
 macro_rules! const_try_opt {
     ($e:expr) => {
