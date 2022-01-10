@@ -32,7 +32,7 @@
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
     clippy::redundant_pub_crate,
-    clippy::non_ascii_literal,
+    clippy::non_ascii_literal
 )]
 #![doc(test(attr(deny(warnings))))]
 
@@ -563,7 +563,7 @@ impl_ranged! {
 mod tests {
     use std::convert::TryFrom;
 
-    use crate::{TryFromIntError, U32, Char};
+    use crate::{Char, TryFromIntError, U32};
 
     #[test]
     fn test_try_from_primitive_to_deranged() {
