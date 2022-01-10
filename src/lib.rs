@@ -61,14 +61,16 @@ pub struct ParseIntError {
 
 impl ParseIntError {
     /// Outputs the detailed cause of parsing an integer failing.
-    pub const fn kind(&self) -> &IntErrorKind {
+    #[allow(clippy::missing_const_for_fn)] // This function is not const because the counterpart of stdlib isn't
+    pub fn kind(&self) -> &IntErrorKind {
         &self.kind
     }
 
     // Copied from unstable `core::fmt::ParseIntError::__description` in order to implement
     // `fmt::Display`.  Once the function is stabilized, this function can be removed.
     #[doc(hidden)]
-    pub const fn __description(&self) -> &str {
+    #[allow(clippy::missing_const_for_fn)] // This function is not const because the counterpart of stdlib isn't
+    pub fn __description(&self) -> &str {
         match self.kind {
             IntErrorKind::Empty => "cannot parse integer from empty string",
             IntErrorKind::InvalidDigit => "invalid digit found in string",
