@@ -38,7 +38,7 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt;
-use core::num::ParseIntError;
+use core::num::IntErrorKind;
 use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error;
@@ -55,21 +55,39 @@ impl fmt::Display for TryFromIntError {
 impl Error for TryFromIntError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FromStrError {
-    ParseIntError(ParseIntError),
-    TryFromIntError(TryFromIntError),
+pub struct ParseIntError {
+    kind: IntErrorKind,
 }
 
-impl fmt::Display for FromStrError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ParseIntError(e) => e.fmt(f),
-            Self::TryFromIntError(e) => e.fmt(f),
+impl ParseIntError {
+    /// Outputs the detailed cause of parsing an integer failing.
+    pub const fn kind(&self) -> &IntErrorKind {
+        &self.kind
+    }
+
+    // Copied from unstable `core::fmt::ParseIntError::__description` in order to implement
+    // `fmt::Display`.  Once the function is stabilized, this function can be removed.
+    #[doc(hidden)]
+    pub const fn __description(&self) -> &str {
+        match self.kind {
+            IntErrorKind::Empty => "cannot parse integer from empty string",
+            IntErrorKind::InvalidDigit => "invalid digit found in string",
+            IntErrorKind::PosOverflow => "number too large to fit in target type",
+            IntErrorKind::NegOverflow => "number too small to fit in target type",
+            IntErrorKind::Zero => "number would be zero for non-zero type",
+            _ => "Unknown Int error kind",
         }
     }
 }
+
+impl fmt::Display for ParseIntError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.__description().fmt(f)
+    }
+}
+
 #[cfg(feature = "std")]
-impl Error for FromStrError {}
+impl Error for ParseIntError {}
 
 macro_rules! const_try_opt {
     ($e:expr) => {
@@ -430,10 +448,18 @@ macro_rules! impl_ranged {
         })*
 
         impl<const MIN: $internal, const MAX: $internal> FromStr for $type<MIN, MAX> {
-            type Err = FromStrError;
+            type Err = ParseIntError;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                use FromStrError::*;
-                s.parse::<$internal>().map_err(ParseIntError)?.try_into().map_err(TryFromIntError)
+                let value = s.parse::<$internal>().map_err(|e| ParseIntError {
+                    kind: e.kind().clone()
+                })?;
+                if value < MIN {
+                    Err(ParseIntError { kind: IntErrorKind::NegOverflow })
+                } else if value > MAX {
+                    Err(ParseIntError { kind: IntErrorKind::PosOverflow })
+                } else {
+                    Ok(Self(value))
+                }
             }
         }
 
@@ -562,7 +588,7 @@ impl_ranged! {
 mod tests {
     use std::convert::TryFrom;
 
-    use crate::{FromStrError, TryFromIntError, U32};
+    use crate::{TryFromIntError, U32};
 
     #[test]
     fn test_try_from_primitive_to_deranged() {
@@ -590,12 +616,12 @@ mod tests {
     #[allow(clippy::enum_glob_use)]
     fn test_from_str() {
         type Target = U32<100, 200>;
-        use FromStrError::*;
-        assert!(matches!("50".parse::<Target>(), Err(TryFromIntError(_))));
+        use std::num::IntErrorKind as Kind;
+        assert!(matches!("50".parse::<Target>(), Err(e) if e.kind() == &Kind::NegOverflow));
         assert!(matches!("100".parse::<Target>(), Ok(U32(100))));
         assert!(matches!("150".parse::<Target>(), Ok(U32(150))));
         assert!(matches!("200".parse::<Target>(), Ok(U32(200))));
-        assert!(matches!("250".parse::<Target>(), Err(TryFromIntError(_))));
-        assert!(matches!("abc".parse::<Target>(), Err(ParseIntError(_))));
+        assert!(matches!("250".parse::<Target>(), Err(e) if e.kind() == &Kind::PosOverflow));
+        assert!(matches!("abc".parse::<Target>(), Err(e) if e.kind() == &Kind::InvalidDigit));
     }
 }
