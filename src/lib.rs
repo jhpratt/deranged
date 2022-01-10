@@ -38,19 +38,36 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt;
+use core::num::ParseIntError;
+use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TryFromIntError;
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OutOfRangeError;
 
-impl fmt::Display for TryFromIntError {
+impl fmt::Display for OutOfRangeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("out of range integral type conversion attempted")
     }
 }
 #[cfg(feature = "std")]
-impl Error for TryFromIntError {}
+impl Error for OutOfRangeError {}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FromStrError {
+    ParseIntError(ParseIntError),
+    OutOfRangeError(OutOfRangeError),
+}
+
+impl fmt::Display for FromStrError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ParseIntError(e) => e.fmt(f),
+            Self::OutOfRangeError(e) => e.fmt(f),
+        }
+    }
+}
 
 macro_rules! const_try_opt {
     ($e:expr) => {
@@ -383,32 +400,40 @@ macro_rules! impl_ranged {
         })*
 
         $(impl<const MIN: $internal, const MAX: $internal> TryFrom<$type<MIN, MAX>> for $try_into {
-            type Error = TryFromIntError;
+            type Error = OutOfRangeError;
 
             fn try_from(value: $type<MIN, MAX>) -> Result<Self, Self::Error> {
-                value.0.try_into().map_err(|_| TryFromIntError)
+                value.0.try_into().map_err(|_| OutOfRangeError)
             }
         })*
 
         $(impl<const MIN: $internal, const MAX: $internal> TryFrom<$try_from> for $type<MIN, MAX> {
-            type Error = TryFromIntError;
+            type Error = OutOfRangeError;
 
             fn try_from(value: $try_from) -> Result<Self, Self::Error> {
                 let value = match TryInto::<$internal>::try_into(value) {
                     Ok(value) => value,
-                    Err(_) => return Err(TryFromIntError)
+                    Err(_) => return Err(OutOfRangeError)
                 };
 
                 if value < MIN || value > MAX {
-                    Err(TryFromIntError)
+                    Err(OutOfRangeError)
                 } else {
                     match TryFrom::try_from(value) {
                         Ok(value) => Ok(Self(value)),
-                        Err(_) => Err(TryFromIntError),
+                        Err(_) => Err(OutOfRangeError),
                     }
                 }
             }
         })*
+
+        impl<const MIN: $internal, const MAX: $internal> FromStr for $type<MIN, MAX> {
+            type Err = FromStrError;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                use FromStrError::*;
+                s.parse::<$internal>().map_err(ParseIntError)?.try_into().map_err(OutOfRangeError)
+            }
+        }
 
         #[cfg(feature = "serde")]
         impl<const MIN: $internal, const MAX: $internal> serde::Serialize for $type<MIN, MAX> {
@@ -535,15 +560,15 @@ impl_ranged! {
 mod tests {
     use std::convert::TryFrom;
 
-    use crate::{TryFromIntError, U32};
+    use crate::{OutOfRangeError, U32, FromStrError};
 
     #[test]
     fn test_try_from_primitive_to_deranged() {
-        assert_eq!(U32::<100, 200>::try_from(50), Err(TryFromIntError));
+        assert_eq!(U32::<100, 200>::try_from(50), Err(OutOfRangeError));
         assert_eq!(U32::<100, 200>::try_from(100), Ok(U32(100)));
         assert_eq!(U32::<100, 200>::try_from(150), Ok(U32(150)));
         assert_eq!(U32::<100, 200>::try_from(200), Ok(U32(200)));
-        assert_eq!(U32::<100, 200>::try_from(250), Err(TryFromIntError));
+        assert_eq!(U32::<100, 200>::try_from(250), Err(OutOfRangeError));
     }
 
     #[test]
@@ -555,7 +580,20 @@ mod tests {
         );
         assert_eq!(
             u8::try_from(U32::<1000, 2000>::new(1500).unwrap()),
-            Err(TryFromIntError)
+            Err(OutOfRangeError)
         );
+    }
+
+    #[test]
+    #[allow(clippy::enum_glob_use)]
+    fn test_from_str() {
+        type Target = U32<100, 200>;
+        use FromStrError::*;
+        assert!(matches!("50".parse::<Target>(), Err(OutOfRangeError(_))));
+        assert!(matches!("100".parse::<Target>(), Ok(U32(100))));
+        assert!(matches!("150".parse::<Target>(), Ok(U32(150))));
+        assert!(matches!("200".parse::<Target>(), Ok(U32(200))));
+        assert!(matches!("250".parse::<Target>(), Err(OutOfRangeError(_))));
+        assert!(matches!("abc".parse::<Target>(), Err(ParseIntError(_))));
     }
 }
