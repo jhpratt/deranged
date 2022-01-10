@@ -562,7 +562,7 @@ impl_ranged! {
 mod tests {
     use std::convert::TryFrom;
 
-    use crate::{OutOfRangeError, U32, FromStrError};
+    use crate::{FromStrError, OutOfRangeError, U32};
 
     #[test]
     fn test_try_from_primitive_to_deranged() {
