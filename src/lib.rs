@@ -43,7 +43,7 @@ use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error;
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TryFromIntError;
 
 impl fmt::Display for TryFromIntError {
