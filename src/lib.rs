@@ -31,7 +31,8 @@
 #![allow(
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
-    clippy::redundant_pub_crate
+    clippy::redundant_pub_crate,
+    clippy::non_ascii_literal,
 )]
 #![doc(test(attr(deny(warnings))))]
 
@@ -61,7 +62,7 @@ macro_rules! const_try_opt {
     };
 }
 
-macro_rules! if_signed {
+macro_rules! if_bool {
     (true $($x:tt)*) => { $($x)*};
     (false $($x:tt)*) => {};
 }
@@ -79,6 +80,7 @@ macro_rules! impl_ranged {
     ($(
         $type:ident {
             internal: $internal:ident
+            integral: $is_integral:ident
             signed: $is_signed:ident
             into: [$($into:ident),* $(,)?]
             try_into: [$($try_into:ident),* $(,)?]
@@ -123,6 +125,7 @@ macro_rules! impl_ranged {
                 }
             }
 
+            if_bool!{$is_integral
             const fn new_saturating(value: $internal) -> Self {
                 Self(if value < MIN {
                     MIN
@@ -132,12 +135,14 @@ macro_rules! impl_ranged {
                     value
                 })
             }
+            }
 
             /// Returns the value as a primitive type.
             pub const fn get(self) -> $internal {
                 self.0
             }
 
+            if_bool!{$is_integral
             /// Checked integer addition. Computes `self + rhs`, returning
             /// `None` if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
@@ -210,7 +215,7 @@ macro_rules! impl_ranged {
                 Self::new(const_try_opt!(self.0.checked_shr(rhs)))
             }
 
-            if_signed!($is_signed
+            if_bool!($is_signed
             /// Checked absolute value. Computes `self.abs()`, returning `None`
             /// if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
@@ -239,7 +244,7 @@ macro_rules! impl_ranged {
                 Self::new_saturating(self.0.saturating_sub(rhs))
             }
 
-            if_signed!($is_signed
+            if_bool!($is_signed
             /// Saturating integer negation. Computes `self - rhs`, saturating
             /// at the numeric bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
@@ -247,7 +252,7 @@ macro_rules! impl_ranged {
                 Self::new_saturating(self.0.saturating_neg())
             });
 
-            if_signed!($is_signed
+            if_bool!($is_signed
             /// Saturating absolute value. Computes `self.abs()`, saturating at
             /// the numeric bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
@@ -268,6 +273,7 @@ macro_rules! impl_ranged {
             pub const fn saturating_pow(self, exp: u32) -> Self {
                 Self::new_saturating(self.0.saturating_pow(exp))
             }
+            } // if_bool!($is_integral
         }
 
         impl<const MIN: $internal, const MAX: $internal> fmt::Debug for $type<MIN, MAX> {
@@ -340,6 +346,7 @@ macro_rules! impl_ranged {
             }
         }
 
+        if_bool!{$is_integral
         impl<const MIN: $internal, const MAX: $internal> fmt::Binary for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 self.0.fmt(f)
@@ -375,6 +382,7 @@ macro_rules! impl_ranged {
                 self.0.fmt(f)
             }
         }
+        } // if_bool!($is_integral
 
         $(impl<const MIN: $internal, const MAX: $internal> From<$type<MIN,MAX>> for $into {
             fn from(value: $type<MIN, MAX>) -> Self {
@@ -447,6 +455,7 @@ macro_rules! impl_ranged {
 impl_ranged! {
     U8 {
         internal: u8
+        integral: true
         signed: false
         into: [u8, u16, u32, u64, u128, usize, i16, i32, i64, i128, isize]
         try_into: [i8]
@@ -454,6 +463,7 @@ impl_ranged! {
     }
     U16 {
         internal: u16
+        integral: true
         signed: false
         into: [u16, u32, u64, u128, usize, i32, i64, i128]
         try_into: [u8, i8, i16, isize]
@@ -461,6 +471,7 @@ impl_ranged! {
     }
     U32 {
         internal: u32
+        integral: true
         signed: false
         into: [u32, u64, u128, i64, i128]
         try_into: [u8, u16, usize, i8, i16, i32, isize]
@@ -468,6 +479,7 @@ impl_ranged! {
     }
     U64 {
         internal: u64
+        integral: true
         signed: false
         into: [u64, u128, i128]
         try_into: [u8, u16, u32, usize, i8, i16, i32, i64, isize]
@@ -475,6 +487,7 @@ impl_ranged! {
     }
     U128 {
         internal: u128
+        integral: true
         signed: false
         into: [u128]
         try_into: [u8, u16, u32, u64, usize, i8, i16, i32, i64, i128, isize]
@@ -482,6 +495,7 @@ impl_ranged! {
     }
     Usize {
         internal: usize
+        integral: true
         signed: false
         into: [usize]
         try_into: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, isize]
@@ -489,6 +503,7 @@ impl_ranged! {
     }
     I8 {
         internal: i8
+        integral: true
         signed: true
         into: [i8, i16, i32, i64, i128, isize]
         try_into: [u8, u16, u32, u64, u128, usize]
@@ -496,6 +511,7 @@ impl_ranged! {
     }
     I16 {
         internal: i16
+        integral: true
         signed: true
         into: [i16, i32, i64, i128, isize]
         try_into: [u8, u16, u32, u64, u128, usize, i8]
@@ -503,6 +519,7 @@ impl_ranged! {
     }
     I32 {
         internal: i32
+        integral: true
         signed: true
         into: [i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128, usize, i8, i16, isize]
@@ -510,6 +527,7 @@ impl_ranged! {
     }
     I64 {
         internal: i64
+        integral: true
         signed: true
         into: [i64, i128]
         try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, isize]
@@ -517,6 +535,7 @@ impl_ranged! {
     }
     I128 {
         internal: i128
+        integral: true
         signed: true
         into: [i128]
         try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, isize]
@@ -524,10 +543,19 @@ impl_ranged! {
     }
     Isize {
         internal: isize
+        integral: true
         signed: true
         into: [isize]
         try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
+    }
+    Char {
+        internal: char
+        integral: false
+        signed: false
+        into: []
+        try_into: []
+        try_from: []
     }
 }
 
@@ -535,7 +563,7 @@ impl_ranged! {
 mod tests {
     use std::convert::TryFrom;
 
-    use crate::{TryFromIntError, U32};
+    use crate::{TryFromIntError, U32, Char};
 
     #[test]
     fn test_try_from_primitive_to_deranged() {
@@ -557,5 +585,15 @@ mod tests {
             u8::try_from(U32::<1000, 2000>::new(1500).unwrap()),
             Err(TryFromIntError)
         );
+    }
+
+    #[test]
+    fn test_char() {
+        type C = Char<'a', 'z'>;
+        assert_eq!(C::new(' '), None);
+        assert_eq!(C::new('a'), Some(Char('a')));
+        assert_eq!(C::new('t'), Some(Char('t')));
+        assert_eq!(C::new('z'), Some(Char('z')));
+        assert_eq!(C::new('あ'), None);
     }
 }
