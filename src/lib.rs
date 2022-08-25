@@ -1,3 +1,4 @@
+#![cfg_attr(docs_rs, feature(doc_auto_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     anonymous_parameters,
@@ -494,6 +495,16 @@ macro_rules! impl_ranged {
         > rand::distributions::Distribution<$type<MIN, MAX>> for rand::distributions::Standard {
             fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
                 $type(rng.gen_range(MIN..=MAX))
+            }
+        }
+
+        #[cfg(feature = "num")]
+        impl<const MIN: $internal, const MAX: $internal> num_traits::Bounded for $type<MIN, MAX> {
+            fn min_value() -> Self {
+                Self(MIN)
+            }
+            fn max_value() -> Self {
+                Self(MAX)
             }
         }
     )*};
