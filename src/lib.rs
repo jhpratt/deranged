@@ -118,6 +118,7 @@ macro_rules! article {
 macro_rules! impl_ranged {
     ($(
         $type:ident {
+            old_type: $old_type:ident
             internal: $internal:ident
             signed: $is_signed:ident
             into: [$($into:ident),* $(,)?]
@@ -125,6 +126,9 @@ macro_rules! impl_ranged {
             try_from: [$($try_from:ident),* $(,)?]
         }
     )*) => {$(
+        #[deprecated = concat!("renamed to `", stringify!($type), "`")]
+        pub type $old_type<const MIN: $internal, const MAX: $internal> = $type<MIN, MAX>;
+
         #[doc = concat!(
             article!($is_signed),
             " `",
@@ -511,84 +515,96 @@ macro_rules! impl_ranged {
 }
 
 impl_ranged! {
-    U8 {
+    RangedU8 {
+        old_type: U8
         internal: u8
         signed: false
         into: [u8, u16, u32, u64, u128, usize, i16, i32, i64, i128, isize]
         try_into: [i8]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    U16 {
+    RangedU16 {
+        old_type: U16
         internal: u16
         signed: false
         into: [u16, u32, u64, u128, usize, i32, i64, i128]
         try_into: [u8, i8, i16, isize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    U32 {
+    RangedU32 {
+        old_type: U32
         internal: u32
         signed: false
         into: [u32, u64, u128, i64, i128]
         try_into: [u8, u16, usize, i8, i16, i32, isize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    U64 {
+    RangedU64 {
+        old_type: U64
         internal: u64
         signed: false
         into: [u64, u128, i128]
         try_into: [u8, u16, u32, usize, i8, i16, i32, i64, isize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    U128 {
+    RangedU128 {
+        old_type: U128
         internal: u128
         signed: false
         into: [u128]
         try_into: [u8, u16, u32, u64, usize, i8, i16, i32, i64, i128, isize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    Usize {
+    RangedUsize {
+        old_type: Usize
         internal: usize
         signed: false
         into: [usize]
         try_into: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, isize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    I8 {
+    RangedI8 {
+        old_type: I8
         internal: i8
         signed: true
         into: [i8, i16, i32, i64, i128, isize]
         try_into: [u8, u16, u32, u64, u128, usize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    I16 {
+    RangedI16 {
+        old_type: I16
         internal: i16
         signed: true
         into: [i16, i32, i64, i128, isize]
         try_into: [u8, u16, u32, u64, u128, usize, i8]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    I32 {
+    RangedI32 {
+        old_type: I32
         internal: i32
         signed: true
         into: [i32, i64, i128]
         try_into: [u8, u16, u32, u64, u128, usize, i8, i16, isize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    I64 {
+    RangedI64 {
+        old_type: I64
         internal: i64
         signed: true
         into: [i64, i128]
         try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, isize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    I128 {
+    RangedI128 {
+        old_type: I128
         internal: i128
         signed: true
         into: [i128]
         try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, isize]
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
-    Isize {
+    RangedIsize {
+        old_type: Isize
         internal: isize
         signed: true
         into: [isize]
@@ -601,26 +617,26 @@ impl_ranged! {
 mod tests {
     use std::convert::TryFrom;
 
-    use crate::{TryFromIntError, U32};
+    use crate::{RangedU32, TryFromIntError};
 
     #[test]
     fn test_try_from_primitive_to_deranged() {
-        assert_eq!(U32::<100, 200>::try_from(50), Err(TryFromIntError));
-        assert_eq!(U32::<100, 200>::try_from(100), Ok(U32(100)));
-        assert_eq!(U32::<100, 200>::try_from(150), Ok(U32(150)));
-        assert_eq!(U32::<100, 200>::try_from(200), Ok(U32(200)));
-        assert_eq!(U32::<100, 200>::try_from(250), Err(TryFromIntError));
+        assert_eq!(RangedU32::<100, 200>::try_from(50), Err(TryFromIntError));
+        assert_eq!(RangedU32::<100, 200>::try_from(100), Ok(RangedU32(100)));
+        assert_eq!(RangedU32::<100, 200>::try_from(150), Ok(RangedU32(150)));
+        assert_eq!(RangedU32::<100, 200>::try_from(200), Ok(RangedU32(200)));
+        assert_eq!(RangedU32::<100, 200>::try_from(250), Err(TryFromIntError));
     }
 
     #[test]
     #[allow(clippy::unwrap_used)]
     fn test_try_from_deranged_to_primitive() {
         assert_eq!(
-            u32::try_from(U32::<1000, 2000>::new(1500).unwrap()),
+            u32::try_from(RangedU32::<1000, 2000>::new(1500).unwrap()),
             Ok(1500)
         );
         assert_eq!(
-            u8::try_from(U32::<1000, 2000>::new(1500).unwrap()),
+            u8::try_from(RangedU32::<1000, 2000>::new(1500).unwrap()),
             Err(TryFromIntError)
         );
     }
@@ -628,12 +644,12 @@ mod tests {
     #[test]
     #[allow(clippy::enum_glob_use)]
     fn test_from_str() {
-        type Target = U32<100, 200>;
+        type Target = RangedU32<100, 200>;
         use std::num::IntErrorKind as Kind;
         assert!(matches!("50".parse::<Target>(), Err(e) if e.kind() == &Kind::NegOverflow));
-        assert!(matches!("100".parse::<Target>(), Ok(U32(100))));
-        assert!(matches!("150".parse::<Target>(), Ok(U32(150))));
-        assert!(matches!("200".parse::<Target>(), Ok(U32(200))));
+        assert!(matches!("100".parse::<Target>(), Ok(RangedU32(100))));
+        assert!(matches!("150".parse::<Target>(), Ok(RangedU32(150))));
+        assert!(matches!("200".parse::<Target>(), Ok(RangedU32(200))));
         assert!(matches!("250".parse::<Target>(), Err(e) if e.kind() == &Kind::PosOverflow));
         assert!(matches!("abc".parse::<Target>(), Err(e) if e.kind() == &Kind::InvalidDigit));
     }
