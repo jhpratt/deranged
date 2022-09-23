@@ -66,12 +66,10 @@ impl ParseIntError {
     pub fn kind(&self) -> &IntErrorKind {
         &self.kind
     }
+}
 
-    // Copied from unstable `core::fmt::ParseIntError::__description` in order to implement
-    // `fmt::Display`.  Once the function is stabilized, this function can be removed.
-    #[doc(hidden)]
-    #[allow(clippy::missing_const_for_fn)] // This function is not const because the counterpart of stdlib isn't
-    pub fn __description(&self) -> &str {
+impl fmt::Display for ParseIntError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             IntErrorKind::Empty => "cannot parse integer from empty string",
             IntErrorKind::InvalidDigit => "invalid digit found in string",
@@ -80,12 +78,7 @@ impl ParseIntError {
             IntErrorKind::Zero => "number would be zero for non-zero type",
             _ => "Unknown Int error kind",
         }
-    }
-}
-
-impl fmt::Display for ParseIntError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.__description().fmt(f)
+        .fmt(f)
     }
 }
 
