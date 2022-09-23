@@ -147,6 +147,7 @@ macro_rules! impl_ranged {
             ///
             /// The value must be within the range `MIN..=MAX`.
             pub const unsafe fn new_unchecked(value: $internal) -> Self {
+                debug_assert!(MIN <= value && value <= MAX);
                 Self(value)
             }
 
