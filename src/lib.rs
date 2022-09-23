@@ -3,6 +3,7 @@
 #![deny(
     anonymous_parameters,
     clippy::all,
+    clippy::missing_safety_doc,
     const_err,
     illegal_floating_point_literal_pattern,
     late_bound_lifetime_arguments,
@@ -12,7 +13,8 @@
     trivial_casts,
     trivial_numeric_casts,
     unreachable_pub,
-    unused_extern_crates
+    unused_extern_crates,
+    unsafe_op_in_unsafe_fn
 )]
 #![warn(
     clippy::dbg_macro,
@@ -62,7 +64,8 @@ pub struct ParseIntError {
 
 impl ParseIntError {
     /// Outputs the detailed cause of parsing an integer failing.
-    #[allow(clippy::missing_const_for_fn)] // This function is not const because the counterpart of stdlib isn't
+    // This function is not const because the counterpart of stdlib isn't
+    #[allow(clippy::missing_const_for_fn)]
     pub fn kind(&self) -> &IntErrorKind {
         &self.kind
     }
@@ -106,6 +109,22 @@ macro_rules! article {
     (false) => {
         "A"
     };
+}
+
+macro_rules! unsafe_unwrap_unchecked {
+    ($e:expr) => {{
+        let opt = $e;
+        debug_assert!(opt.is_some());
+        match $e {
+            Some(value) => value,
+            None => {
+                #[allow(unused_unsafe)] // macro-generated code
+                unsafe {
+                    core::hint::unreachable_unchecked()
+                }
+            }
+        }
+    }};
 }
 
 macro_rules! impl_ranged {
@@ -176,69 +195,172 @@ macro_rules! impl_ranged {
                 self.0
             }
 
-            /// Checked integer addition. Computes `self + rhs`, returning
-            /// `None` if the resulting value is out of range.
+            /// Checked integer addition. Computes `self + rhs`, returning `None` if the resulting
+            /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_add(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_add(rhs)))
             }
 
-            /// Checked integer addition. Computes `self - rhs`, returning
-            /// `None` if the resulting value is out of range.
+            /// Unchecked integer addition. Computes `self + rhs`, assuming that the result is in
+            /// range.
+            ///
+            /// # Safety
+            ///
+            /// The result of `self + rhs` must be in the range `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_add(self, rhs: $internal) -> Self {
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_add(rhs))) }
+            }
+
+            /// Checked integer addition. Computes `self - rhs`, returning `None` if the resulting
+            /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_sub(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_sub(rhs)))
             }
 
-            /// Checked integer addition. Computes `self * rhs`, returning
-            /// `None` if the resulting value is out of range.
+            /// Unchecked integer subtraction. Computes `self - rhs`, assuming that the result is in
+            /// range.
+            ///
+            /// # Safety
+            ///
+            /// The result of `self - rhs` must be in the range `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_sub(self, rhs: $internal) -> Self {
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_sub(rhs))) }
+            }
+
+            /// Checked integer addition. Computes `self * rhs`, returning `None` if the resulting
+            /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_mul(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_mul(rhs)))
             }
 
-            /// Checked integer addition. Computes `self / rhs`, returning
-            /// `None` if `rhs == 0` or if the resulting value is out of range.
+            /// Unchecked integer multiplication. Computes `self * rhs`, assuming that the result is
+            /// in range.
+            ///
+            /// # Safety
+            ///
+            /// The result of `self * rhs` must be in the range `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_mul(self, rhs: $internal) -> Self {
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_mul(rhs))) }
+            }
+
+            /// Checked integer addition. Computes `self / rhs`, returning `None` if `rhs == 0` or
+            /// if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_div(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_div(rhs)))
             }
 
-            /// Checked Euclidean division. Computes `self.div_euclid(rhs)`,
-            /// returning `None` if `rhs == 0` or if the resulting value is out
-            /// of range.
+            /// Unchecked integer division. Computes `self / rhs`, assuming that `rhs != 0` and that
+            /// the result is in range.
+            ///
+            /// # Safety
+            ///
+            /// `self` must not be zero and the result of `self / rhs` must be in the range
+            /// `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_div(self, rhs: $internal) -> Self {
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_div(rhs))) }
+            }
+
+            /// Checked Euclidean division. Computes `self.div_euclid(rhs)`, returning `None` if
+            /// `rhs == 0` or if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_div_euclid(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_div_euclid(rhs)))
             }
 
-            /// Checked integer remainder. Computes `self % rhs`, returning
-            /// `None` if `rhs == 0` or if the resulting value is out of range.
+            /// Unchecked Euclidean division. Computes `self.div_euclid(rhs)`, assuming that
+            /// `rhs != 0` and that the result is in range.
+            ///
+            /// # Safety
+            ///
+            /// `self` must not be zero and the result of `self.div_euclid(rhs)` must be in the
+            /// range `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_div_euclid(self, rhs: $internal) -> Self {
+                unsafe {
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_div_euclid(rhs)))
+                }
+            }
+
+            /// Checked integer remainder. Computes `self % rhs`, returning `None` if `rhs == 0` or
+            /// if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_rem(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_rem(rhs)))
             }
 
-            /// Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`,
-            /// returning `None` if `rhs == 0` or if the resulting value is out
-            /// of range.
+            /// Unchecked remainder. Computes `self % rhs`, assuming that `rhs != 0` and that the
+            /// result is in range.
+            ///
+            /// # Safety
+            ///
+            /// `self` must not be zero and the result of `self % rhs` must be in the range
+            /// `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_rem(self, rhs: $internal) -> Self {
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_rem(rhs))) }
+            }
+
+            /// Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`, returning `None` if
+            /// `rhs == 0` or if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_rem_euclid(self, rhs: $internal) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_rem_euclid(rhs)))
             }
 
-            /// Checked negation. Computes `-self`, returning `None` if the
-            /// resulting value is out of range.
+            /// Unchecked Euclidean remainder. Computes `self.rem_euclid(rhs)`, assuming that
+            /// `rhs != 0` and that the result is in range.
+            ///
+            /// # Safety
+            ///
+            /// `self` must not be zero and the result of `self.rem_euclid(rhs)` must be in the
+            /// range `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_rem_euclid(self, rhs: $internal) -> Self {
+                unsafe {
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_rem_euclid(rhs)))
+                }
+            }
+
+            /// Checked negation. Computes `-self`, returning `None` if the resulting value is out
+            /// of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_neg(self) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_neg()))
             }
 
-            /// Checked shift left. Computes `self << rhs`, returning `None` if
-            /// the resulting value is out of range.
+            /// Unchecked negation. Computes `-self`, assuming that `-self` is in range.
+            ///
+            /// # Safety
+            ///
+            /// The result of `-self` must be in the range `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_neg(self) -> Self {
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_neg())) }
+            }
+
+            /// Checked shift left. Computes `self << rhs`, returning `None` if the resulting value
+            /// is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_shl(rhs)))
+            }
+
+            /// Unchecked shift left. Computes `self << rhs`, assuming that the result is in range.
+            ///
+            /// # Safety
+            ///
+            /// The result of `self << rhs` must be in the range `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_shl(rhs))) }
             }
 
             /// Checked shift right. Computes `self >> rhs`, returning `None` if
@@ -248,60 +370,91 @@ macro_rules! impl_ranged {
                 Self::new(const_try_opt!(self.0.checked_shr(rhs)))
             }
 
+            /// Unchecked shift right. Computes `self >> rhs`, assuming that the result is in range.
+            ///
+            /// # Safety
+            ///
+            /// The result of `self >> rhs` must be in the range `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_shr(rhs))) }
+            }
+
             if_signed!($is_signed
-            /// Checked absolute value. Computes `self.abs()`, returning `None`
-            /// if the resulting value is out of range.
+            /// Checked absolute value. Computes `self.abs()`, returning `None` if the resulting
+            /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_abs(self) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_abs()))
+            }
+
+            /// Unchecked absolute value. Computes `self.abs()`, assuming that the result is in
+            /// range.
+            ///
+            /// # Safety
+            ///
+            /// The result of `self.abs()` must be in the range `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_abs(self) -> Self {
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_abs())) }
             });
 
-            /// Checked exponentiation. Computes `self.pow(exp)`, returning
-            /// `None` if the resulting value is out of range.
+            /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if the resulting
+            /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_pow(self, exp: u32) -> Option<Self> {
                 Self::new(const_try_opt!(self.0.checked_pow(exp)))
             }
 
-            /// Saturating integer addition. Computes `self + rhs`, saturating
-            /// at the numeric bounds.
+            /// Unchecked exponentiation. Computes `self.pow(exp)`, assuming that the result is in
+            /// range.
+            ///
+            /// # Safety
+            ///
+            /// The result of `self.pow(exp)` must be in the range `MIN..=MAX`.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            pub const unsafe fn unchecked_pow(self, exp: u32) -> Self {
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_pow(exp))) }
+            }
+
+            /// Saturating integer addition. Computes `self + rhs`, saturating at the numeric
+            /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_add(self, rhs: $internal) -> Self {
                 Self::new_saturating(self.0.saturating_add(rhs))
             }
 
-            /// Saturating integer subtraction. Computes `self - rhs`,
-            /// saturating at the numeric bounds.
+            /// Saturating integer subtraction. Computes `self - rhs`, saturating at the numeric
+            /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_sub(self, rhs: $internal) -> Self {
                 Self::new_saturating(self.0.saturating_sub(rhs))
             }
 
             if_signed!($is_signed
-            /// Saturating integer negation. Computes `self - rhs`, saturating
-            /// at the numeric bounds.
+            /// Saturating integer negation. Computes `self - rhs`, saturating at the numeric
+            /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_neg(self) -> Self {
                 Self::new_saturating(self.0.saturating_neg())
             });
 
             if_signed!($is_signed
-            /// Saturating absolute value. Computes `self.abs()`, saturating at
-            /// the numeric bounds.
+            /// Saturating absolute value. Computes `self.abs()`, saturating at the numeric bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_abs(self) -> Self {
                 Self::new_saturating(self.0.saturating_abs())
             });
 
-            /// Saturating integer multiplication. Computes `self * rhs`,
-            /// saturating at the numeric bounds.
+            /// Saturating integer multiplication. Computes `self * rhs`, saturating at the numeric
+            /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_mul(self, rhs: $internal) -> Self {
                 Self::new_saturating(self.0.saturating_mul(rhs))
             }
 
-            /// Saturating integer exponentiation. Computes `self.pow(exp)`,
-            /// saturating at the numeric bounds.
+            /// Saturating integer exponentiation. Computes `self.pow(exp)`, saturating at the
+            /// numeric bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_pow(self, exp: u32) -> Self {
                 Self::new_saturating(self.0.saturating_pow(exp))
