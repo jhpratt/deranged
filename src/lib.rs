@@ -658,6 +658,15 @@ macro_rules! impl_ranged {
                 Self(MAX)
             }
         }
+
+        #[cfg(feature = "quickcheck")]
+        impl<const MIN: $internal, const MAX: $internal> quickcheck::Arbitrary for $type<MIN, MAX> {
+            fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+                unsafe {
+                    Self::new_unchecked($internal::arbitrary(g).rem_euclid(MAX - MIN + 1) + MIN)
+                }
+            }
+        }
     )*};
 }
 
