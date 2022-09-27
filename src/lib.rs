@@ -127,6 +127,16 @@ macro_rules! unsafe_unwrap_unchecked {
     }};
 }
 
+macro_rules! assume {
+    ($e:expr) => {{
+        let val = $e;
+        debug_assert!(val);
+        if !val {
+            core::hint::unreachable_unchecked()
+        }
+    }};
+}
+
 macro_rules! impl_ranged {
     ($(
         $type:ident {
@@ -180,10 +190,12 @@ macro_rules! impl_ranged {
 
                 /// Returns the value as a primitive type.
                 pub const fn get(self) -> $internal {
+                    unsafe { assume!(MIN <= self.0 && self.0 <= MAX) };
                     self.0
                 }
 
                 pub(crate) const fn get_ref(&self) -> &$internal {
+                    unsafe { assume!(MIN <= self.0 && self.0 <= MAX) };
                     &self.0
                 }
             }
