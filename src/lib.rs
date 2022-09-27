@@ -245,7 +245,9 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_add(self, rhs: $internal) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_add(rhs))) }
+                unsafe {
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_add(rhs)))
+                }
             }
 
             /// Checked integer addition. Computes `self - rhs`, returning `None` if the resulting
@@ -265,7 +267,9 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_sub(self, rhs: $internal) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_sub(rhs))) }
+                unsafe {
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_sub(rhs)))
+                }
             }
 
             /// Checked integer addition. Computes `self * rhs`, returning `None` if the resulting
@@ -285,7 +289,9 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_mul(self, rhs: $internal) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_mul(rhs))) }
+                unsafe {
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_mul(rhs)))
+                }
             }
 
             /// Checked integer addition. Computes `self / rhs`, returning `None` if `rhs == 0` or
@@ -306,7 +312,9 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_div(self, rhs: $internal) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_div(rhs))) }
+                unsafe {
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_div(rhs)))
+                }
             }
 
             /// Checked Euclidean division. Computes `self.div_euclid(rhs)`, returning `None` if
@@ -328,7 +336,9 @@ macro_rules! impl_ranged {
             #[inline(always)]
             pub const unsafe fn unchecked_div_euclid(self, rhs: $internal) -> Self {
                 unsafe {
-                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_div_euclid(rhs)))
+                    Self::new_unchecked(
+                        unsafe_unwrap_unchecked!(self.get().checked_div_euclid(rhs))
+                    )
                 }
             }
 
@@ -350,7 +360,9 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_rem(self, rhs: $internal) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_rem(rhs))) }
+                unsafe {
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_rem(rhs)))
+                }
             }
 
             /// Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`, returning `None` if
@@ -372,7 +384,9 @@ macro_rules! impl_ranged {
             #[inline(always)]
             pub const unsafe fn unchecked_rem_euclid(self, rhs: $internal) -> Self {
                 unsafe {
-                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_rem_euclid(rhs)))
+                    Self::new_unchecked(
+                        unsafe_unwrap_unchecked!(self.get().checked_rem_euclid(rhs))
+                    )
                 }
             }
 
@@ -411,7 +425,9 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_shl(rhs))) }
+                unsafe {
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_shl(rhs)))
+                }
             }
 
             /// Checked shift right. Computes `self >> rhs`, returning `None` if
@@ -430,7 +446,9 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_shr(rhs))) }
+                unsafe {
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_shr(rhs)))
+                }
             }
 
             if_signed!($is_signed
@@ -471,7 +489,9 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_pow(self, exp: u32) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_pow(exp))) }
+                unsafe {
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_pow(exp)))
+                }
             }
 
             /// Saturating integer addition. Computes `self + rhs`, saturating at the numeric
@@ -873,6 +893,7 @@ impl_ranged! {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use std::convert::TryFrom;
 
@@ -881,9 +902,18 @@ mod tests {
     #[test]
     fn test_try_from_primitive_to_deranged() {
         assert_eq!(RangedU32::<100, 200>::try_from(50), Err(TryFromIntError));
-        assert_eq!(RangedU32::<100, 200>::try_from(100), Ok(RangedU32(100)));
-        assert_eq!(RangedU32::<100, 200>::try_from(150), Ok(RangedU32(150)));
-        assert_eq!(RangedU32::<100, 200>::try_from(200), Ok(RangedU32(200)));
+        assert_eq!(
+            RangedU32::<100, 200>::try_from(100),
+            Ok(RangedU32::new(100).unwrap())
+        );
+        assert_eq!(
+            RangedU32::<100, 200>::try_from(150),
+            Ok(RangedU32::new(150).unwrap())
+        );
+        assert_eq!(
+            RangedU32::<100, 200>::try_from(200),
+            Ok(RangedU32::new(200).unwrap())
+        );
         assert_eq!(RangedU32::<100, 200>::try_from(250), Err(TryFromIntError));
     }
 
@@ -906,9 +936,9 @@ mod tests {
         type Target = RangedU32<100, 200>;
         use std::num::IntErrorKind as Kind;
         assert!(matches!("50".parse::<Target>(), Err(e) if e.kind() == &Kind::NegOverflow));
-        assert!(matches!("100".parse::<Target>(), Ok(RangedU32(100))));
-        assert!(matches!("150".parse::<Target>(), Ok(RangedU32(150))));
-        assert!(matches!("200".parse::<Target>(), Ok(RangedU32(200))));
+        assert!(matches!("100".parse::<Target>(), Ok(val) if val.get() == 100));
+        assert!(matches!("150".parse::<Target>(), Ok(val) if val.get() == 150));
+        assert!(matches!("200".parse::<Target>(), Ok(val) if val.get() == 200));
         assert!(matches!("250".parse::<Target>(), Err(e) if e.kind() == &Kind::PosOverflow));
         assert!(matches!("abc".parse::<Target>(), Err(e) if e.kind() == &Kind::InvalidDigit));
     }
