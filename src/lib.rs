@@ -130,6 +130,7 @@ macro_rules! unsafe_unwrap_unchecked {
 macro_rules! impl_ranged {
     ($(
         $type:ident {
+            mod_name: $mod_name:ident
             old_type: $old_type:ident
             internal: $internal:ident
             signed: $is_signed:ident
@@ -141,65 +142,77 @@ macro_rules! impl_ranged {
         #[deprecated = concat!("renamed to `", stringify!($type), "`")]
         pub type $old_type<const MIN: $internal, const MAX: $internal> = $type<MIN, MAX>;
 
-        #[doc = concat!(
-            article!($is_signed),
-            " `",
-            stringify!($internal),
-            "` that is known to be in the range `MIN..=MAX`.",
-        )]
-        #[repr(transparent)]
-        #[derive(Clone, Copy, Eq, Ord, Hash)]
-        pub struct $type<const MIN: $internal, const MAX: $internal>(
-            $internal,
-        );
+        pub use $mod_name::$type;
+
+        mod $mod_name {
+            #[doc = concat!(
+                article!($is_signed),
+                " `",
+                stringify!($internal),
+                "` that is known to be in the range `MIN..=MAX`.",
+            )]
+            #[repr(transparent)]
+            #[derive(Clone, Copy, Eq, Ord, Hash)]
+            pub struct $type<const MIN: $internal, const MAX: $internal>(
+                $internal,
+            );
+
+            impl<const MIN: $internal, const MAX: $internal> $type<MIN, MAX> {
+                /// Creates a ranged integer without checking the value.
+                ///
+                /// # Safety
+                ///
+                /// The value must be within the range `MIN..=MAX`.
+                pub const unsafe fn new_unchecked(value: $internal) -> Self {
+                    debug_assert!(MIN <= value && value <= MAX);
+                    Self(value)
+                }
+
+                /// Creates a ranged integer if the given value is in the range
+                /// `MIN..=MAX`.
+                pub const fn new(value: $internal) -> Option<Self> {
+                    if value < MIN || value > MAX {
+                        None
+                    } else {
+                        Some(Self(value))
+                    }
+                }
+
+                /// Returns the value as a primitive type.
+                pub const fn get(self) -> $internal {
+                    self.0
+                }
+
+                pub(crate) const fn get_ref(&self) -> &$internal {
+                    &self.0
+                }
+            }
+        }
 
         impl<const MIN: $internal, const MAX: $internal> $type<MIN, MAX> {
             /// The smallest value that can be represented by this type.
-            pub const MIN: Self = Self(MIN);
+            pub const MIN: Self = unsafe { Self::new_unchecked(MIN) };
 
             /// The largest value that can be represented by this type.
-            pub const MAX: Self = Self(MAX);
-
-            /// Creates a ranged integer without checking the value.
-            ///
-            /// # Safety
-            ///
-            /// The value must be within the range `MIN..=MAX`.
-            pub const unsafe fn new_unchecked(value: $internal) -> Self {
-                debug_assert!(MIN <= value && value <= MAX);
-                Self(value)
-            }
-
-            /// Creates a ranged integer if the given value is in the range
-            /// `MIN..=MAX`.
-            pub const fn new(value: $internal) -> Option<Self> {
-                if value < MIN || value > MAX {
-                    None
-                } else {
-                    Some(Self(value))
-                }
-            }
+            pub const MAX: Self = unsafe { Self::new_unchecked(MAX) };
 
             const fn new_saturating(value: $internal) -> Self {
-                Self(if value < MIN {
-                    MIN
-                } else if value > MAX {
-                    MAX
-                } else {
-                    value
-                })
-            }
-
-            /// Returns the value as a primitive type.
-            pub const fn get(self) -> $internal {
-                self.0
+                unsafe {
+                    Self::new_unchecked(if value < MIN {
+                        MIN
+                    } else if value > MAX {
+                        MAX
+                    } else {
+                        value
+                    })
+                }
             }
 
             /// Checked integer addition. Computes `self + rhs`, returning `None` if the resulting
             /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_add(self, rhs: $internal) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_add(rhs)))
+                Self::new(const_try_opt!(self.get().checked_add(rhs)))
             }
 
             /// Unchecked integer addition. Computes `self + rhs`, assuming that the result is in
@@ -210,14 +223,14 @@ macro_rules! impl_ranged {
             /// The result of `self + rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_add(self, rhs: $internal) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_add(rhs))) }
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_add(rhs))) }
             }
 
             /// Checked integer addition. Computes `self - rhs`, returning `None` if the resulting
             /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_sub(self, rhs: $internal) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_sub(rhs)))
+                Self::new(const_try_opt!(self.get().checked_sub(rhs)))
             }
 
             /// Unchecked integer subtraction. Computes `self - rhs`, assuming that the result is in
@@ -228,14 +241,14 @@ macro_rules! impl_ranged {
             /// The result of `self - rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_sub(self, rhs: $internal) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_sub(rhs))) }
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_sub(rhs))) }
             }
 
             /// Checked integer addition. Computes `self * rhs`, returning `None` if the resulting
             /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_mul(self, rhs: $internal) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_mul(rhs)))
+                Self::new(const_try_opt!(self.get().checked_mul(rhs)))
             }
 
             /// Unchecked integer multiplication. Computes `self * rhs`, assuming that the result is
@@ -246,14 +259,14 @@ macro_rules! impl_ranged {
             /// The result of `self * rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_mul(self, rhs: $internal) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_mul(rhs))) }
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_mul(rhs))) }
             }
 
             /// Checked integer addition. Computes `self / rhs`, returning `None` if `rhs == 0` or
             /// if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_div(self, rhs: $internal) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_div(rhs)))
+                Self::new(const_try_opt!(self.get().checked_div(rhs)))
             }
 
             /// Unchecked integer division. Computes `self / rhs`, assuming that `rhs != 0` and that
@@ -265,14 +278,14 @@ macro_rules! impl_ranged {
             /// `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_div(self, rhs: $internal) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_div(rhs))) }
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_div(rhs))) }
             }
 
             /// Checked Euclidean division. Computes `self.div_euclid(rhs)`, returning `None` if
             /// `rhs == 0` or if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_div_euclid(self, rhs: $internal) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_div_euclid(rhs)))
+                Self::new(const_try_opt!(self.get().checked_div_euclid(rhs)))
             }
 
             /// Unchecked Euclidean division. Computes `self.div_euclid(rhs)`, assuming that
@@ -285,7 +298,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_div_euclid(self, rhs: $internal) -> Self {
                 unsafe {
-                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_div_euclid(rhs)))
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_div_euclid(rhs)))
                 }
             }
 
@@ -293,7 +306,7 @@ macro_rules! impl_ranged {
             /// if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_rem(self, rhs: $internal) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_rem(rhs)))
+                Self::new(const_try_opt!(self.get().checked_rem(rhs)))
             }
 
             /// Unchecked remainder. Computes `self % rhs`, assuming that `rhs != 0` and that the
@@ -305,14 +318,14 @@ macro_rules! impl_ranged {
             /// `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_rem(self, rhs: $internal) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_rem(rhs))) }
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_rem(rhs))) }
             }
 
             /// Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`, returning `None` if
             /// `rhs == 0` or if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_rem_euclid(self, rhs: $internal) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_rem_euclid(rhs)))
+                Self::new(const_try_opt!(self.get().checked_rem_euclid(rhs)))
             }
 
             /// Unchecked Euclidean remainder. Computes `self.rem_euclid(rhs)`, assuming that
@@ -325,7 +338,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_rem_euclid(self, rhs: $internal) -> Self {
                 unsafe {
-                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_rem_euclid(rhs)))
+                    Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_rem_euclid(rhs)))
                 }
             }
 
@@ -333,7 +346,7 @@ macro_rules! impl_ranged {
             /// of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_neg(self) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_neg()))
+                Self::new(const_try_opt!(self.get().checked_neg()))
             }
 
             /// Unchecked negation. Computes `-self`, assuming that `-self` is in range.
@@ -343,14 +356,14 @@ macro_rules! impl_ranged {
             /// The result of `-self` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_neg(self) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_neg())) }
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_neg())) }
             }
 
             /// Checked shift left. Computes `self << rhs`, returning `None` if the resulting value
             /// is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_shl(rhs)))
+                Self::new(const_try_opt!(self.get().checked_shl(rhs)))
             }
 
             /// Unchecked shift left. Computes `self << rhs`, assuming that the result is in range.
@@ -360,14 +373,14 @@ macro_rules! impl_ranged {
             /// The result of `self << rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_shl(rhs))) }
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_shl(rhs))) }
             }
 
             /// Checked shift right. Computes `self >> rhs`, returning `None` if
             /// the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_shr(rhs)))
+                Self::new(const_try_opt!(self.get().checked_shr(rhs)))
             }
 
             /// Unchecked shift right. Computes `self >> rhs`, assuming that the result is in range.
@@ -377,7 +390,7 @@ macro_rules! impl_ranged {
             /// The result of `self >> rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_shr(rhs))) }
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_shr(rhs))) }
             }
 
             if_signed!($is_signed
@@ -385,7 +398,7 @@ macro_rules! impl_ranged {
             /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_abs(self) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_abs()))
+                Self::new(const_try_opt!(self.get().checked_abs()))
             }
 
             /// Unchecked absolute value. Computes `self.abs()`, assuming that the result is in
@@ -396,14 +409,14 @@ macro_rules! impl_ranged {
             /// The result of `self.abs()` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_abs(self) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_abs())) }
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_abs())) }
             });
 
             /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if the resulting
             /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn checked_pow(self, exp: u32) -> Option<Self> {
-                Self::new(const_try_opt!(self.0.checked_pow(exp)))
+                Self::new(const_try_opt!(self.get().checked_pow(exp)))
             }
 
             /// Unchecked exponentiation. Computes `self.pow(exp)`, assuming that the result is in
@@ -414,21 +427,21 @@ macro_rules! impl_ranged {
             /// The result of `self.pow(exp)` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const unsafe fn unchecked_pow(self, exp: u32) -> Self {
-                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.0.checked_pow(exp))) }
+                unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_pow(exp))) }
             }
 
             /// Saturating integer addition. Computes `self + rhs`, saturating at the numeric
             /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_add(self, rhs: $internal) -> Self {
-                Self::new_saturating(self.0.saturating_add(rhs))
+                Self::new_saturating(self.get().saturating_add(rhs))
             }
 
             /// Saturating integer subtraction. Computes `self - rhs`, saturating at the numeric
             /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_sub(self, rhs: $internal) -> Self {
-                Self::new_saturating(self.0.saturating_sub(rhs))
+                Self::new_saturating(self.get().saturating_sub(rhs))
             }
 
             if_signed!($is_signed
@@ -436,52 +449,52 @@ macro_rules! impl_ranged {
             /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_neg(self) -> Self {
-                Self::new_saturating(self.0.saturating_neg())
+                Self::new_saturating(self.get().saturating_neg())
             });
 
             if_signed!($is_signed
             /// Saturating absolute value. Computes `self.abs()`, saturating at the numeric bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_abs(self) -> Self {
-                Self::new_saturating(self.0.saturating_abs())
+                Self::new_saturating(self.get().saturating_abs())
             });
 
             /// Saturating integer multiplication. Computes `self * rhs`, saturating at the numeric
             /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_mul(self, rhs: $internal) -> Self {
-                Self::new_saturating(self.0.saturating_mul(rhs))
+                Self::new_saturating(self.get().saturating_mul(rhs))
             }
 
             /// Saturating integer exponentiation. Computes `self.pow(exp)`, saturating at the
             /// numeric bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             pub const fn saturating_pow(self, exp: u32) -> Self {
-                Self::new_saturating(self.0.saturating_pow(exp))
+                Self::new_saturating(self.get().saturating_pow(exp))
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> fmt::Debug for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0.fmt(f)
+                self.get().fmt(f)
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> fmt::Display for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0.fmt(f)
+                self.get().fmt(f)
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> AsRef<$internal> for $type<MIN, MAX> {
             fn as_ref(&self) -> &$internal {
-                &self.0
+                &self.get_ref()
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> Borrow<$internal> for $type<MIN, MAX> {
             fn borrow(&self) -> &$internal {
-                &self.0
+                &self.get_ref()
             }
         }
 
@@ -492,19 +505,19 @@ macro_rules! impl_ranged {
             const MAX_B: $internal,
         > PartialEq<$type<MIN_B, MAX_B>> for $type<MIN_A, MAX_A> {
             fn eq(&self, other: &$type<MIN_B, MAX_B>) -> bool {
-                self.0 == other.0
+                self.get() == other.get()
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> PartialEq<$internal> for $type<MIN, MAX> {
             fn eq(&self, other: &$internal) -> bool {
-                self.0 == *other
+                self.get() == *other
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> PartialEq<$type<MIN, MAX>> for $internal {
             fn eq(&self, other: &$type<MIN, MAX>) -> bool {
-                *self == other.0
+                *self == other.get()
             }
         }
 
@@ -515,61 +528,61 @@ macro_rules! impl_ranged {
             const MAX_B: $internal,
         > PartialOrd<$type<MIN_B, MAX_B>> for $type<MIN_A, MAX_A> {
             fn partial_cmp(&self, other: &$type<MIN_B, MAX_B>) -> Option<Ordering> {
-                self.0.partial_cmp(&other.0)
+                self.get().partial_cmp(&other.get())
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> PartialOrd<$internal> for $type<MIN, MAX> {
             fn partial_cmp(&self, other: &$internal) -> Option<Ordering> {
-                self.0.partial_cmp(other)
+                self.get().partial_cmp(other)
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> PartialOrd<$type<MIN, MAX>> for $internal {
             fn partial_cmp(&self, other: &$type<MIN, MAX>) -> Option<Ordering> {
-                self.partial_cmp(&other.0)
+                self.partial_cmp(&other.get())
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> fmt::Binary for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0.fmt(f)
+                self.get().fmt(f)
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> fmt::LowerHex for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0.fmt(f)
+                self.get().fmt(f)
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> fmt::UpperHex for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0.fmt(f)
+                self.get().fmt(f)
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> fmt::LowerExp for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0.fmt(f)
+                self.get().fmt(f)
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> fmt::UpperExp for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0.fmt(f)
+                self.get().fmt(f)
             }
         }
 
         impl<const MIN: $internal, const MAX: $internal> fmt::Octal for $type<MIN, MAX> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0.fmt(f)
+                self.get().fmt(f)
             }
         }
 
         $(impl<const MIN: $internal, const MAX: $internal> From<$type<MIN,MAX>> for $into {
             fn from(value: $type<MIN, MAX>) -> Self {
-                value.0.into()
+                value.get().into()
             }
         })*
 
@@ -577,7 +590,7 @@ macro_rules! impl_ranged {
             type Error = TryFromIntError;
 
             fn try_from(value: $type<MIN, MAX>) -> Result<Self, Self::Error> {
-                value.0.try_into().map_err(|_| TryFromIntError)
+                value.get().try_into().map_err(|_| TryFromIntError)
             }
         })*
 
@@ -594,7 +607,7 @@ macro_rules! impl_ranged {
                     Err(TryFromIntError)
                 } else {
                     match TryFrom::try_from(value) {
-                        Ok(value) => Ok(Self(value)),
+                        Ok(value) => Ok(unsafe { Self::new_unchecked(value) }),
                         Err(_) => Err(TryFromIntError),
                     }
                 }
@@ -612,7 +625,7 @@ macro_rules! impl_ranged {
                 } else if value > MAX {
                     Err(ParseIntError { kind: IntErrorKind::PosOverflow })
                 } else {
-                    Ok(Self(value))
+                    Ok(unsafe { Self::new_unchecked(value) })
                 }
             }
         }
@@ -645,17 +658,17 @@ macro_rules! impl_ranged {
             const MAX: $internal,
         > rand::distributions::Distribution<$type<MIN, MAX>> for rand::distributions::Standard {
             fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
-                $type(rng.gen_range(MIN..=MAX))
+                $type::new(rng.gen_range(MIN..=MAX)).expect("rand failed to generate a valid value")
             }
         }
 
         #[cfg(feature = "num")]
         impl<const MIN: $internal, const MAX: $internal> num_traits::Bounded for $type<MIN, MAX> {
             fn min_value() -> Self {
-                Self(MIN)
+                unsafe { Self::new_unchecked(MIN) }
             }
             fn max_value() -> Self {
-                Self(MAX)
+                unsafe { Self::new_unchecked(MAX) }
             }
         }
 
@@ -672,6 +685,7 @@ macro_rules! impl_ranged {
 
 impl_ranged! {
     RangedU8 {
+        mod_name: ranged_u8
         old_type: U8
         internal: u8
         signed: false
@@ -680,6 +694,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedU16 {
+        mod_name: ranged_u16
         old_type: U16
         internal: u16
         signed: false
@@ -688,6 +703,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedU32 {
+        mod_name: ranged_u32
         old_type: U32
         internal: u32
         signed: false
@@ -696,6 +712,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedU64 {
+        mod_name: ranged_u64
         old_type: U64
         internal: u64
         signed: false
@@ -704,6 +721,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedU128 {
+        mod_name: ranged_u128
         old_type: U128
         internal: u128
         signed: false
@@ -712,6 +730,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedUsize {
+        mod_name: ranged_usize
         old_type: Usize
         internal: usize
         signed: false
@@ -720,6 +739,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedI8 {
+        mod_name: ranged_i8
         old_type: I8
         internal: i8
         signed: true
@@ -728,6 +748,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedI16 {
+        mod_name: ranged_i16
         old_type: I16
         internal: i16
         signed: true
@@ -736,6 +757,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedI32 {
+        mod_name: ranged_i32
         old_type: I32
         internal: i32
         signed: true
@@ -744,6 +766,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedI64 {
+        mod_name: ranged_i64
         old_type: I64
         internal: i64
         signed: true
@@ -752,6 +775,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedI128 {
+        mod_name: ranged_i128
         old_type: I128
         internal: i128
         signed: true
@@ -760,6 +784,7 @@ impl_ranged! {
         try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedIsize {
+        mod_name: ranged_isize
         old_type: Isize
         internal: isize
         signed: true
