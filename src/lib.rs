@@ -178,7 +178,7 @@ macro_rules! impl_ranged {
                 /// The value must be within the range `MIN..=MAX`.
                 #[inline(always)]
                 pub const unsafe fn new_unchecked(value: $internal) -> Self {
-                    debug_assert!(MIN <= value && value <= MAX);
+                    unsafe { assume!(MIN <= value && value <= MAX) };
                     Self(value)
                 }
 
@@ -760,12 +760,12 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> num_traits::Bounded for $type<MIN, MAX> {
             #[inline(always)]
             fn min_value() -> Self {
-                unsafe { Self::new_unchecked(MIN) }
+                Self::MIN
             }
 
             #[inline(always)]
             fn max_value() -> Self {
-                unsafe { Self::new_unchecked(MAX) }
+                Self::MAX
             }
         }
 
