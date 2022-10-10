@@ -4,6 +4,8 @@
     anonymous_parameters,
     clippy::all,
     clippy::missing_safety_doc,
+    clippy::missing_safety_doc,
+    clippy::undocumented_unsafe_blocks,
     const_err,
     illegal_floating_point_literal_pattern,
     late_bound_lifetime_arguments,
@@ -13,8 +15,8 @@
     trivial_casts,
     trivial_numeric_casts,
     unreachable_pub,
-    unused_extern_crates,
-    unsafe_op_in_unsafe_fn
+    unsafe_op_in_unsafe_fn,
+    unused_extern_crates
 )]
 #![warn(
     clippy::dbg_macro,
@@ -120,12 +122,7 @@ macro_rules! unsafe_unwrap_unchecked {
         debug_assert!(opt.is_some());
         match $e {
             Some(value) => value,
-            None => {
-                #[allow(unused_unsafe)] // macro-generated code
-                unsafe {
-                    core::hint::unreachable_unchecked()
-                }
-            }
+            None => core::hint::unreachable_unchecked(),
         }
     }};
 }
@@ -157,6 +154,8 @@ macro_rules! impl_ranged {
 
         pub use $mod_name::$type;
 
+        // Introduce the type in a module. This ensures that all accesses and mutations of the field
+        // have the necessary checks.
         mod $mod_name {
             #[doc = concat!(
                 article!($is_signed),
@@ -178,6 +177,7 @@ macro_rules! impl_ranged {
                 /// The value must be within the range `MIN..=MAX`.
                 #[inline(always)]
                 pub const unsafe fn new_unchecked(value: $internal) -> Self {
+                    // Safety: The caller must ensure that the value is in range.
                     unsafe { assume!(MIN <= value && value <= MAX) };
                     Self(value)
                 }
@@ -196,12 +196,14 @@ macro_rules! impl_ranged {
                 /// Returns the value as a primitive type.
                 #[inline(always)]
                 pub const fn get(self) -> $internal {
+                    // Safety: A stored value is always in range.
                     unsafe { assume!(MIN <= self.0 && self.0 <= MAX) };
                     self.0
                 }
 
                 #[inline(always)]
                 pub(crate) const fn get_ref(&self) -> &$internal {
+                    // Safety: A stored value is always in range.
                     unsafe { assume!(MIN <= self.0 && self.0 <= MAX) };
                     &self.0
                 }
@@ -210,13 +212,16 @@ macro_rules! impl_ranged {
 
         impl<const MIN: $internal, const MAX: $internal> $type<MIN, MAX> {
             /// The smallest value that can be represented by this type.
+            // Safety: `MIN` is in range by definition.
             pub const MIN: Self = unsafe { Self::new_unchecked(MIN) };
 
             /// The largest value that can be represented by this type.
+            // Safety: `MAX` is in range by definition.
             pub const MAX: Self = unsafe { Self::new_unchecked(MAX) };
 
             #[inline]
             const fn new_saturating(value: $internal) -> Self {
+                // Safety: The value is clamped to the range.
                 unsafe {
                     Self::new_unchecked(if value < MIN {
                         MIN
@@ -245,6 +250,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_add(self, rhs: $internal) -> Self {
+                // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_add(rhs)))
                 }
@@ -267,6 +273,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_sub(self, rhs: $internal) -> Self {
+                // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_sub(rhs)))
                 }
@@ -289,6 +296,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_mul(self, rhs: $internal) -> Self {
+                // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_mul(rhs)))
                 }
@@ -312,6 +320,8 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_div(self, rhs: $internal) -> Self {
+                // Safety: The caller must ensure that the result is in range and that `rhs` is not
+                // zero.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_div(rhs)))
                 }
@@ -335,6 +345,8 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_div_euclid(self, rhs: $internal) -> Self {
+                // Safety: The caller must ensure that the result is in range and that `rhs` is not
+                // zero.
                 unsafe {
                     Self::new_unchecked(
                         unsafe_unwrap_unchecked!(self.get().checked_div_euclid(rhs))
@@ -360,6 +372,8 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_rem(self, rhs: $internal) -> Self {
+                // Safety: The caller must ensure that the result is in range and that `rhs` is not
+                // zero.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_rem(rhs)))
                 }
@@ -383,6 +397,8 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_rem_euclid(self, rhs: $internal) -> Self {
+                // Safety: The caller must ensure that the result is in range and that `rhs` is not
+                // zero.
                 unsafe {
                     Self::new_unchecked(
                         unsafe_unwrap_unchecked!(self.get().checked_rem_euclid(rhs))
@@ -406,6 +422,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_neg(self) -> Self {
+                // Safety: The caller must ensure that the result is in range.
                 unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_neg())) }
             }
 
@@ -425,6 +442,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
+                // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_shl(rhs)))
                 }
@@ -446,6 +464,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
+                // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_shr(rhs)))
                 }
@@ -469,6 +488,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_abs(self) -> Self {
+                // Safety: The caller must ensure that the result is in range.
                 unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_abs())) }
             });
 
@@ -489,6 +509,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_pow(self, exp: u32) -> Self {
+                // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_pow(exp)))
                 }
@@ -696,6 +717,7 @@ macro_rules! impl_ranged {
                     Err(TryFromIntError)
                 } else {
                     match TryFrom::try_from(value) {
+                        // Safety: The value was previously checked for validity.
                         Ok(value) => Ok(unsafe { Self::new_unchecked(value) }),
                         Err(_) => Err(TryFromIntError),
                     }
@@ -716,6 +738,7 @@ macro_rules! impl_ranged {
                 } else if value > MAX {
                     Err(ParseIntError { kind: IntErrorKind::PosOverflow })
                 } else {
+                    // Safety: The value was previously checked for validity.
                     Ok(unsafe { Self::new_unchecked(value) })
                 }
             }
@@ -773,6 +796,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> quickcheck::Arbitrary for $type<MIN, MAX> {
             #[inline]
             fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+                // Safety: The `rem_euclid` call and addition ensure that the value is in range.
                 unsafe {
                     Self::new_unchecked($internal::arbitrary(g).rem_euclid(MAX - MIN + 1) + MIN)
                 }
