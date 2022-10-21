@@ -13,11 +13,6 @@ macro_rules! if_signed {
     (unsigned $($x:tt)*) => {};
 }
 
-macro_rules! if_unsigned {
-    (unsigned $($x:tt)*) => { $($x)*};
-    (signed $($x:tt)*) => {};
-}
-
 #[test]
 fn errors() {
     assert_eq!(
