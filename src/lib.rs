@@ -40,6 +40,9 @@
 )]
 #![doc(test(attr(deny(warnings))))]
 
+#[cfg(test)]
+mod tests;
+
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt;
@@ -807,53 +810,5 @@ impl_ranged! {
         mod_name: ranged_isize
         internal: isize
         signed: true
-    }
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use std::convert::TryFrom;
-
-    use crate::{RangedU32, TryFromIntError};
-
-    #[test]
-    fn test_try_from_primitive_to_deranged() {
-        assert_eq!(RangedU32::<100, 200>::try_from(50), Err(TryFromIntError));
-        assert_eq!(
-            RangedU32::<100, 200>::try_from(100),
-            Ok(RangedU32::new(100).unwrap())
-        );
-        assert_eq!(
-            RangedU32::<100, 200>::try_from(150),
-            Ok(RangedU32::new(150).unwrap())
-        );
-        assert_eq!(
-            RangedU32::<100, 200>::try_from(200),
-            Ok(RangedU32::new(200).unwrap())
-        );
-        assert_eq!(RangedU32::<100, 200>::try_from(250), Err(TryFromIntError));
-    }
-
-    #[test]
-    #[allow(clippy::unwrap_used)]
-    fn test_try_from_deranged_to_primitive() {
-        assert_eq!(
-            u32::try_from(RangedU32::<1000, 2000>::new(1500).unwrap()),
-            Ok(1500)
-        );
-    }
-
-    #[test]
-    #[allow(clippy::enum_glob_use)]
-    fn test_from_str() {
-        type Target = RangedU32<100, 200>;
-        use std::num::IntErrorKind as Kind;
-        assert!(matches!("50".parse::<Target>(), Err(e) if e.kind() == &Kind::NegOverflow));
-        assert!(matches!("100".parse::<Target>(), Ok(val) if val.get() == 100));
-        assert!(matches!("150".parse::<Target>(), Ok(val) if val.get() == 150));
-        assert!(matches!("200".parse::<Target>(), Ok(val) if val.get() == 200));
-        assert!(matches!("250".parse::<Target>(), Err(e) if e.kind() == &Kind::PosOverflow));
-        assert!(matches!("abc".parse::<Target>(), Err(e) if e.kind() == &Kind::InvalidDigit));
     }
 }
