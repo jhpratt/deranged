@@ -6,7 +6,6 @@
     clippy::missing_safety_doc,
     clippy::missing_safety_doc,
     clippy::undocumented_unsafe_blocks,
-    const_err,
     illegal_floating_point_literal_pattern,
     late_bound_lifetime_arguments,
     path_statements,
@@ -141,17 +140,10 @@ macro_rules! impl_ranged {
     ($(
         $type:ident {
             mod_name: $mod_name:ident
-            old_type: $old_type:ident
             internal: $internal:ident
             signed: $is_signed:ident
-            into: [$($into:ident),* $(,)?]
-            try_into: [$($try_into:ident),* $(,)?]
-            try_from: [$($try_from:ident),* $(,)?]
         }
     )*) => {$(
-        #[deprecated = concat!("renamed to `", stringify!($type), "`")]
-        pub type $old_type<const MIN: $internal, const MAX: $internal> = $type<MIN, MAX>;
-
         pub use $mod_name::$type;
 
         // Introduce the type in a module. This ensures that all accesses and mutations of the field
@@ -605,20 +597,6 @@ macro_rules! impl_ranged {
             }
         }
 
-        impl<const MIN: $internal, const MAX: $internal> PartialEq<$internal> for $type<MIN, MAX> {
-            #[inline(always)]
-            fn eq(&self, other: &$internal) -> bool {
-                self.get() == *other
-            }
-        }
-
-        impl<const MIN: $internal, const MAX: $internal> PartialEq<$type<MIN, MAX>> for $internal {
-            #[inline(always)]
-            fn eq(&self, other: &$type<MIN, MAX>) -> bool {
-                *self == other.get()
-            }
-        }
-
         impl<
             const MIN_A: $internal,
             const MAX_A: $internal,
@@ -628,20 +606,6 @@ macro_rules! impl_ranged {
             #[inline(always)]
             fn partial_cmp(&self, other: &$type<MIN_B, MAX_B>) -> Option<Ordering> {
                 self.get().partial_cmp(&other.get())
-            }
-        }
-
-        impl<const MIN: $internal, const MAX: $internal> PartialOrd<$internal> for $type<MIN, MAX> {
-            #[inline(always)]
-            fn partial_cmp(&self, other: &$internal) -> Option<Ordering> {
-                self.get().partial_cmp(other)
-            }
-        }
-
-        impl<const MIN: $internal, const MAX: $internal> PartialOrd<$type<MIN, MAX>> for $internal {
-            #[inline(always)]
-            fn partial_cmp(&self, other: &$type<MIN, MAX>) -> Option<Ordering> {
-                self.partial_cmp(&other.get())
             }
         }
 
@@ -687,43 +651,21 @@ macro_rules! impl_ranged {
             }
         }
 
-        $(impl<const MIN: $internal, const MAX: $internal> From<$type<MIN,MAX>> for $into {
+        impl<const MIN: $internal, const MAX: $internal> From<$type<MIN,MAX>> for $internal {
             #[inline(always)]
             fn from(value: $type<MIN, MAX>) -> Self {
-                value.get().into()
+                value.get()
             }
-        })*
+        }
 
-        $(impl<const MIN: $internal, const MAX: $internal> TryFrom<$type<MIN, MAX>> for $try_into {
-            type Error = TryFromIntError;
-
-            #[inline(always)]
-            fn try_from(value: $type<MIN, MAX>) -> Result<Self, Self::Error> {
-                value.get().try_into().map_err(|_| TryFromIntError)
-            }
-        })*
-
-        $(impl<const MIN: $internal, const MAX: $internal> TryFrom<$try_from> for $type<MIN, MAX> {
+        impl<const MIN: $internal, const MAX: $internal> TryFrom<$internal> for $type<MIN, MAX> {
             type Error = TryFromIntError;
 
             #[inline]
-            fn try_from(value: $try_from) -> Result<Self, Self::Error> {
-                let value = match TryInto::<$internal>::try_into(value) {
-                    Ok(value) => value,
-                    Err(_) => return Err(TryFromIntError)
-                };
-
-                if value < MIN || value > MAX {
-                    Err(TryFromIntError)
-                } else {
-                    match TryFrom::try_from(value) {
-                        // Safety: The value was previously checked for validity.
-                        Ok(value) => Ok(unsafe { Self::new_unchecked(value) }),
-                        Err(_) => Err(TryFromIntError),
-                    }
-                }
+            fn try_from(value: $internal) -> Result<Self, Self::Error> {
+                Self::new(value).ok_or(TryFromIntError)
             }
-        })*
+        }
 
         impl<const MIN: $internal, const MAX: $internal> FromStr for $type<MIN, MAX> {
             type Err = ParseIntError;
@@ -808,111 +750,63 @@ macro_rules! impl_ranged {
 impl_ranged! {
     RangedU8 {
         mod_name: ranged_u8
-        old_type: U8
         internal: u8
         signed: false
-        into: [u8, u16, u32, u64, u128, usize, i16, i32, i64, i128, isize]
-        try_into: [i8]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedU16 {
         mod_name: ranged_u16
-        old_type: U16
         internal: u16
         signed: false
-        into: [u16, u32, u64, u128, usize, i32, i64, i128]
-        try_into: [u8, i8, i16, isize]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedU32 {
         mod_name: ranged_u32
-        old_type: U32
         internal: u32
         signed: false
-        into: [u32, u64, u128, i64, i128]
-        try_into: [u8, u16, usize, i8, i16, i32, isize]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedU64 {
         mod_name: ranged_u64
-        old_type: U64
         internal: u64
         signed: false
-        into: [u64, u128, i128]
-        try_into: [u8, u16, u32, usize, i8, i16, i32, i64, isize]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedU128 {
         mod_name: ranged_u128
-        old_type: U128
         internal: u128
         signed: false
-        into: [u128]
-        try_into: [u8, u16, u32, u64, usize, i8, i16, i32, i64, i128, isize]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedUsize {
         mod_name: ranged_usize
-        old_type: Usize
         internal: usize
         signed: false
-        into: [usize]
-        try_into: [u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, isize]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedI8 {
         mod_name: ranged_i8
-        old_type: I8
         internal: i8
         signed: true
-        into: [i8, i16, i32, i64, i128, isize]
-        try_into: [u8, u16, u32, u64, u128, usize]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedI16 {
         mod_name: ranged_i16
-        old_type: I16
         internal: i16
         signed: true
-        into: [i16, i32, i64, i128, isize]
-        try_into: [u8, u16, u32, u64, u128, usize, i8]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedI32 {
         mod_name: ranged_i32
-        old_type: I32
         internal: i32
         signed: true
-        into: [i32, i64, i128]
-        try_into: [u8, u16, u32, u64, u128, usize, i8, i16, isize]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedI64 {
         mod_name: ranged_i64
-        old_type: I64
         internal: i64
         signed: true
-        into: [i64, i128]
-        try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, isize]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedI128 {
         mod_name: ranged_i128
-        old_type: I128
         internal: i128
         signed: true
-        into: [i128]
-        try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, isize]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
     RangedIsize {
         mod_name: ranged_isize
-        old_type: Isize
         internal: isize
         signed: true
-        into: [isize]
-        try_into: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128]
-        try_from: [u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]
     }
 }
 
@@ -947,10 +841,6 @@ mod tests {
         assert_eq!(
             u32::try_from(RangedU32::<1000, 2000>::new(1500).unwrap()),
             Ok(1500)
-        );
-        assert_eq!(
-            u8::try_from(RangedU32::<1000, 2000>::new(1500).unwrap()),
-            Err(TryFromIntError)
         );
     }
 
