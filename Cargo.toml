@@ -9,6 +9,7 @@ keywords = ["integer", "int", "range"]
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 description = "Ranged integers"
+include = ["src/**/*", "LICENSE-*", "README.md"]
 
 [features]
 default = ["std"]
