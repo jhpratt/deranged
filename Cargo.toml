@@ -1,9 +1,9 @@
 [package]
 name = "deranged"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["Jacob Pratt <jacob@jhpratt.dev>"]
 edition = "2021"
-rust-version = "1.56.0"
+rust-version = "1.60.0"
 repository = "https://github.com/jhpratt/deranged"
 keywords = ["integer", "int", "range"]
 readme = "README.md"
@@ -13,8 +13,11 @@ include = ["src/**/*", "LICENSE-*", "README.md"]
 
 [features]
 default = ["std"]
+num = ["dep:num-traits"]
+quickcheck = ["dep:quickcheck"]
+rand = ["dep:rand"]
+serde = ["dep:serde"]
 std = []
-num = ["num-traits"]
 
 [package.metadata.docs.rs]
 all-features = true

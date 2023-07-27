@@ -15,6 +15,37 @@ on:
       - LICENSE-MIT
 
 jobs:
+  powerset:
+    name: Type checking (${{ matrix.rust.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - { version: "1.60.0", name: MSRV }
+          - { version: stable, name: stable }
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust.version }}
+
+      - name: Install cargo-hack
+        shell: bash
+        run: |
+          curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz \
+          | tar xzf - -C ~/.cargo/bin
+
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v2
+
+      - name: Type checking
+        run: |
+          cargo hack check --feature-powerset --exclude-features default
+
   tests:
     name: Tests
     runs-on: ubuntu-latest

@@ -915,7 +915,12 @@ macro_rules! impl_ranged {
                 let internal = <$internal>::deserialize(deserializer)?;
                 Self::new(internal).ok_or_else(|| <D::Error as serde::de::Error>::invalid_value(
                     serde::de::Unexpected::Other("integer"),
-                    &format!("an integer in the range {}..={}", MIN, MAX).as_ref()
+                    #[cfg(feature = "std")] {
+                        &format!("an integer in the range {}..={}", MIN, MAX).as_ref()
+                    },
+                    #[cfg(not(feature = "std"))] {
+                        &"an integer in the valid range"
+                    }
                 ))
             }
         }
