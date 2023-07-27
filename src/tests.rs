@@ -139,6 +139,12 @@ macro_rules! tests {
         )*}
 
         #[test]
+        fn get_primitive() {$(
+            assert_eq!($opt::Some($t::<5, 10>::MAX).get_primitive(), Some(10));
+            assert_eq!($opt::<5, 10>::None.get_primitive(), None);
+        )*}
+
+        #[test]
         fn get_ref() {$(
             assert_eq!($t::<5, 10>::MAX.get_ref(), &10);
         )*}

@@ -641,6 +641,11 @@ macro_rules! impl_ranged {
         }
 
         impl<const MIN: $internal, const MAX: $internal> $optional_type<MIN, MAX> {
+            #[inline(always)]
+            pub const fn get_primitive(self) -> Option<$internal> {
+                Some(const_try_opt!(self.get()).get())
+            }
+
             /// Returns `true` if the value is the niche value.
             #[inline(always)]
             pub const fn is_none(self) -> bool {
