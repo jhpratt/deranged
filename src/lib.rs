@@ -145,9 +145,10 @@ macro_rules! impl_ranged {
             mod_name: $mod_name:ident
             internal: $internal:ident
             signed: $is_signed:ident
+            optional: $optional_type:ident
         }
     )*) => {$(
-        pub use $mod_name::$type;
+        pub use $mod_name::{$type, $optional_type};
 
         // Introduce the type in a module. This ensures that all accesses and mutations of the field
         // have the necessary checks.
@@ -161,6 +162,34 @@ macro_rules! impl_ranged {
             #[repr(transparent)]
             #[derive(Clone, Copy, Eq, Ord, Hash)]
             pub struct $type<const MIN: $internal, const MAX: $internal>(
+                $internal,
+            );
+
+            #[doc = concat!(
+                "A `",
+                stringify!($type),
+                "` that is optional. Equivalent to [`Option<",
+                stringify!($type),
+                ">`] with niche value optimization.",
+            )]
+            ///
+            #[doc = concat!(
+                "If `MIN` is [`",
+                stringify!($internal),
+                "::MIN`] _and_ `MAX` is [`",
+                stringify!($internal)
+                ,"::MAX`] then compilation will fail. This is because there is no way to represent \
+                the niche value.",
+            )]
+            ///
+            /// This type is useful when you need to store an optional ranged value in a struct, but
+            /// do not want the overhead of an `Option` type. This reduces the size of the struct
+            /// overall, and is particularly useful when you have a large number of optional fields.
+            /// Note that most operations must still be performed on the [`Option`] type, which is
+            #[doc = concat!("obtained with [`", stringify!($optional_type), "::get`].")]
+            #[repr(transparent)]
+            #[derive(Clone, Copy, Eq, Hash)]
+            pub struct $optional_type<const MIN: $internal, const MAX: $internal>(
                 $internal,
             );
 
@@ -201,6 +230,57 @@ macro_rules! impl_ranged {
                     // Safety: A stored value is always in range.
                     unsafe { assume!(MIN <= self.0 && self.0 <= MAX) };
                     &self.0
+                }
+            }
+
+            impl<const MIN: $internal, const MAX: $internal> $optional_type<MIN, MAX> {
+                /// The value used as the niche. Must not be in the range `MIN..=MAX`.
+                const NICHE: $internal = match (MIN, MAX) {
+                    ($internal::MIN, $internal::MAX) => panic!("type has no niche"),
+                    ($internal::MIN, _) => $internal::MAX,
+                    (_, _) => $internal::MIN,
+                };
+
+                /// An optional ranged value that is not present.
+                #[allow(non_upper_case_globals)]
+                pub const None: Self = Self(Self::NICHE);
+
+                /// Creates an optional ranged value that is present.
+                #[allow(non_snake_case)]
+                #[inline(always)]
+                pub const fn Some(value: $type<MIN, MAX>) -> Self {
+                    Self(value.get())
+                }
+
+                /// Returns the value as the standard library's [`Option`] type.
+                #[inline(always)]
+                pub const fn get(self) -> Option<$type<MIN, MAX>> {
+                    if self.0 == Self::NICHE {
+                        None
+                    } else {
+                        // Safety: A stored value that is not the niche is always in range.
+                        Some(unsafe { $type::new_unchecked(self.0) })
+                    }
+                }
+
+                /// Creates an optional ranged integer without checking the value.
+                ///
+                /// # Safety
+                ///
+                /// The value must be within the range `MIN..=MAX`. As the value used for niche
+                /// value optimization is unspecified, the provided value must not be the niche
+                /// value.
+                #[inline(always)]
+                pub const unsafe fn some_unchecked(value: $internal) -> Self {
+                    // Safety: The caller must ensure that the value is in range.
+                    unsafe { assume!(MIN <= value && value <= MAX) };
+                    Self(value)
+                }
+
+                /// Obtain the inner value of the struct. This is useful for comparisons.
+                #[inline(always)]
+                pub(crate) const fn inner(self) -> $internal {
+                    self.0
                 }
             }
         }
@@ -560,7 +640,28 @@ macro_rules! impl_ranged {
             }
         }
 
+        impl<const MIN: $internal, const MAX: $internal> $optional_type<MIN, MAX> {
+            /// Returns `true` if the value is the niche value.
+            #[inline(always)]
+            pub const fn is_none(self) -> bool {
+                self.get().is_none()
+            }
+
+            /// Returns `true` if the value is not the niche value.
+            #[inline(always)]
+            pub const fn is_some(self) -> bool {
+                self.get().is_some()
+            }
+        }
+
         impl<const MIN: $internal, const MAX: $internal> fmt::Debug for $type<MIN, MAX> {
+            #[inline(always)]
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.get().fmt(f)
+            }
+        }
+
+        impl<const MIN: $internal, const MAX: $internal> fmt::Debug for $optional_type<MIN, MAX> {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 self.get().fmt(f)
@@ -571,6 +672,13 @@ macro_rules! impl_ranged {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 self.get().fmt(f)
+            }
+        }
+
+        impl<const MIN: $internal, const MAX: $internal> Default for $optional_type<MIN, MAX> {
+            #[inline(always)]
+            fn default() -> Self {
+                Self::None
             }
         }
 
@@ -605,10 +713,60 @@ macro_rules! impl_ranged {
             const MAX_A: $internal,
             const MIN_B: $internal,
             const MAX_B: $internal,
+        > PartialEq<$optional_type<MIN_B, MAX_B>> for $optional_type<MIN_A, MAX_A> {
+            #[inline(always)]
+            fn eq(&self, other: &$optional_type<MIN_B, MAX_B>) -> bool {
+                self.inner() == other.inner()
+            }
+        }
+
+        impl<
+            const MIN_A: $internal,
+            const MAX_A: $internal,
+            const MIN_B: $internal,
+            const MAX_B: $internal,
         > PartialOrd<$type<MIN_B, MAX_B>> for $type<MIN_A, MAX_A> {
             #[inline(always)]
             fn partial_cmp(&self, other: &$type<MIN_B, MAX_B>) -> Option<Ordering> {
                 self.get().partial_cmp(&other.get())
+            }
+        }
+
+        impl<
+            const MIN_A: $internal,
+            const MAX_A: $internal,
+            const MIN_B: $internal,
+            const MAX_B: $internal,
+        > PartialOrd<$optional_type<MIN_B, MAX_B>> for $optional_type<MIN_A, MAX_A> {
+            #[inline]
+            fn partial_cmp(&self, other: &$optional_type<MIN_B, MAX_B>) -> Option<Ordering> {
+                if self.is_none() && other.is_none() {
+                    Some(Ordering::Equal)
+                } else if self.is_none() {
+                    Some(Ordering::Less)
+                } else if other.is_none() {
+                    Some(Ordering::Greater)
+                } else {
+                    self.inner().partial_cmp(&other.inner())
+                }
+            }
+        }
+
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > Ord for $optional_type<MIN, MAX> {
+            #[inline]
+            fn cmp(&self, other: &Self) -> Ordering {
+                if self.is_none() && other.is_none() {
+                    Ordering::Equal
+                } else if self.is_none() {
+                    Ordering::Less
+                } else if other.is_none() {
+                    Ordering::Greater
+                } else {
+                    self.inner().cmp(&other.inner())
+                }
             }
         }
 
@@ -654,9 +812,42 @@ macro_rules! impl_ranged {
             }
         }
 
-        impl<const MIN: $internal, const MAX: $internal> From<$type<MIN,MAX>> for $internal {
+        impl<const MIN: $internal, const MAX: $internal> From<$type<MIN, MAX>> for $internal {
             #[inline(always)]
             fn from(value: $type<MIN, MAX>) -> Self {
+                value.get()
+            }
+        }
+
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > From<$type<MIN, MAX>> for $optional_type<MIN, MAX> {
+            #[inline(always)]
+            fn from(value: $type<MIN, MAX>) -> Self {
+                Self::Some(value)
+            }
+        }
+
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > From<Option<$type<MIN, MAX>>> for $optional_type<MIN, MAX> {
+            #[inline(always)]
+            fn from(value: Option<$type<MIN, MAX>>) -> Self {
+                match value {
+                    Some(value) => Self::Some(value),
+                    None => Self::None,
+                }
+            }
+        }
+
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > From<$optional_type<MIN, MAX>> for Option<$type<MIN, MAX>> {
+            #[inline(always)]
+            fn from(value: $optional_type<MIN, MAX>) -> Self {
                 value.get()
             }
         }
@@ -699,6 +890,17 @@ macro_rules! impl_ranged {
 
         #[cfg(feature = "serde")]
         impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > serde::Serialize for $optional_type<MIN, MAX> {
+            #[inline(always)]
+            fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                self.get().serialize(serializer)
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<
             'de,
             const MIN: $internal,
             const MAX: $internal,
@@ -713,6 +915,18 @@ macro_rules! impl_ranged {
             }
         }
 
+        #[cfg(feature = "serde")]
+        impl<
+            'de,
+            const MIN: $internal,
+            const MAX: $internal,
+        > serde::Deserialize<'de> for $optional_type<MIN, MAX> {
+            #[inline]
+            fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                Ok(Self::Some($type::<MIN, MAX>::deserialize(deserializer)?))
+            }
+        }
+
         #[cfg(feature = "rand")]
         impl<
             const MIN: $internal,
@@ -721,6 +935,18 @@ macro_rules! impl_ranged {
             #[inline]
             fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
                 $type::new(rng.gen_range(MIN..=MAX)).expect("rand failed to generate a valid value")
+            }
+        }
+
+        #[cfg(feature = "rand")]
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > rand::distributions::Distribution<$optional_type<MIN, MAX>>
+        for rand::distributions::Standard {
+            #[inline]
+            fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> $optional_type<MIN, MAX> {
+                rng.gen::<Option<$type<MIN, MAX>>>().into()
             }
         }
 
@@ -747,6 +973,17 @@ macro_rules! impl_ranged {
                 }
             }
         }
+
+        #[cfg(feature = "quickcheck")]
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > quickcheck::Arbitrary for $optional_type<MIN, MAX> {
+            #[inline]
+            fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+                Option::<$type<MIN, MAX>>::arbitrary(g).into()
+            }
+        }
     )*};
 }
 
@@ -755,60 +992,72 @@ impl_ranged! {
         mod_name: ranged_u8
         internal: u8
         signed: false
+        optional: OptionRangedU8
     }
     RangedU16 {
         mod_name: ranged_u16
         internal: u16
         signed: false
+        optional: OptionRangedU16
     }
     RangedU32 {
         mod_name: ranged_u32
         internal: u32
         signed: false
+        optional: OptionRangedU32
     }
     RangedU64 {
         mod_name: ranged_u64
         internal: u64
         signed: false
+        optional: OptionRangedU64
     }
     RangedU128 {
         mod_name: ranged_u128
         internal: u128
         signed: false
+        optional: OptionRangedU128
     }
     RangedUsize {
         mod_name: ranged_usize
         internal: usize
         signed: false
+        optional: OptionRangedUsize
     }
     RangedI8 {
         mod_name: ranged_i8
         internal: i8
         signed: true
+        optional: OptionRangedI8
     }
     RangedI16 {
         mod_name: ranged_i16
         internal: i16
         signed: true
+        optional: OptionRangedI16
     }
     RangedI32 {
         mod_name: ranged_i32
         internal: i32
         signed: true
+        optional: OptionRangedI32
     }
     RangedI64 {
         mod_name: ranged_i64
         internal: i64
         signed: true
+        optional: OptionRangedI64
     }
     RangedI128 {
         mod_name: ranged_i128
         internal: i128
         signed: true
+        optional: OptionRangedI128
     }
     RangedIsize {
         mod_name: ranged_isize
         internal: isize
         signed: true
+        optional: OptionRangedIsize
     }
 }
