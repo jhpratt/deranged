@@ -44,6 +44,10 @@
 mod tests;
 mod traits;
 
+#[cfg(feature = "alloc")]
+#[allow(unused_extern_crates)]
+extern crate alloc;
+
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt;
@@ -1083,6 +1087,15 @@ macro_rules! impl_ranged {
                     Self::new_unchecked($internal::arbitrary(g).rem_euclid(MAX - MIN + 1) + MIN)
                 }
             }
+
+            #[inline]
+            fn shrink(&self) -> ::alloc::boxed::Box<dyn Iterator<Item = Self>> {
+                ::alloc::boxed::Box::new(
+                    self.get()
+                        .shrink()
+                        .map(|v| Self::new_saturating(v))
+                )
+            }
         }
 
         #[cfg(feature = "quickcheck")]
@@ -1094,6 +1107,11 @@ macro_rules! impl_ranged {
             fn arbitrary(g: &mut quickcheck::Gen) -> Self {
                 <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
                 Option::<$type<MIN, MAX>>::arbitrary(g).into()
+            }
+
+            #[inline]
+            fn shrink(&self) -> ::alloc::boxed::Box<dyn Iterator<Item = Self>> {
+                ::alloc::boxed::Box::new(self.get().shrink().map(Self::from))
             }
         }
     )*};

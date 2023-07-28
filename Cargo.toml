@@ -1,6 +1,6 @@
 [package]
 name = "deranged"
-version = "0.3.4"
+version = "0.3.5"
 authors = ["Jacob Pratt <jacob@jhpratt.dev>"]
 edition = "2021"
 rust-version = "1.60.0"
@@ -13,11 +13,12 @@ include = ["src/**/*", "LICENSE-*", "README.md"]
 
 [features]
 default = ["std"]
+alloc = []
 num = ["dep:num-traits"]
-quickcheck = ["dep:quickcheck"]
+quickcheck = ["dep:quickcheck", "alloc"]
 rand = ["dep:rand"]
 serde = ["dep:serde"]
-std = []
+std = ["alloc"]
 
 [package.metadata.docs.rs]
 all-features = true
