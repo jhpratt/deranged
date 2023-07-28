@@ -273,6 +273,11 @@ macro_rules! tests {
         )*}
 
         #[test]
+        fn neg() {$( if_signed! { $signed
+            assert_eq!($t::<-10, 10>::MIN.neg(), $t::<-10, 10>::MAX);
+        })*}
+
+        #[test]
         fn checked_shl() {$(
             assert_eq!($t::<5, 10>::MAX.checked_shl(1), None);
             assert_eq!($t::<5, 10>::MAX.checked_shl(0), Some($t::<5, 10>::MAX));
@@ -318,6 +323,11 @@ macro_rules! tests {
                 assert_eq!($t::<5, 10>::MAX.unchecked_abs(), $t::<5, 10>::MAX);
                 assert_eq!($t::<-10, 10>::MIN.unchecked_abs(), $t::<-10, 10>::MAX);
             }
+        })*}
+
+        #[test]
+        fn abs() { $(if_signed! { $signed
+            assert_eq!($t::<-5, 10>::MIN.abs().get(), 5);
         })*}
 
         #[test]
