@@ -22,7 +22,7 @@ fn errors() {
         "out of range integral type conversion attempted"
     );
     assert_eq!(TryFromIntError.clone(), TryFromIntError);
-    assert_eq!(format!("{:?}", TryFromIntError), "TryFromIntError");
+    assert_eq!(format!("{TryFromIntError:?}"), "TryFromIntError");
 
     assert_eq!(
         ParseIntError {
