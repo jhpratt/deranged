@@ -307,6 +307,28 @@ macro_rules! impl_ranged {
             // Safety: `MAX` is in range by definition.
             pub const MAX: Self = unsafe { Self::new_unchecked(MAX) };
 
+            pub const fn expand<const NEW_MIN: $internal, const NEW_MAX: $internal>(
+                self,
+            ) -> $type<NEW_MIN, NEW_MAX> {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                <$type<NEW_MIN, NEW_MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                <($type<MIN, MAX>, $type<NEW_MIN, NEW_MAX>) as $crate::traits::ExpandIsValid>
+                    ::ASSERT;
+                // Safety: The range is widened.
+                unsafe { $type::new_unchecked(self.get()) }
+            }
+
+            pub const fn narrow<
+                const NEW_MIN: $internal,
+                const NEW_MAX: $internal,
+            >(self) -> Option<$type<NEW_MIN, NEW_MAX>> {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                <$type<NEW_MIN, NEW_MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                <($type<MIN, MAX>, $type<NEW_MIN, NEW_MAX>) as $crate::traits::NarrowIsValid>
+                    ::ASSERT;
+                $type::<NEW_MIN, NEW_MAX>::new(self.get())
+            }
+
             #[inline]
             const fn new_saturating(value: $internal) -> Self {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;

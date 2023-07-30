@@ -103,6 +103,18 @@ macro_rules! tests {
         )*}
 
         #[test]
+        fn expand() {$(
+            let expanded: $t::<0, 20> = $t::<5, 10>::MAX.expand();
+            assert_eq!(expanded, $t::<0, 20>::new(10).unwrap());
+        )*}
+
+        #[test]
+        fn narrow() {$(
+            let narrowed: Option<$t::<10, 20>> = $t::<0, 20>::new(10).unwrap().narrow();
+            assert_eq!(narrowed, $t::<10, 20>::new(10));
+        )*}
+
+        #[test]
         fn new() {$(
             assert!($t::<5, 10>::new(10).is_some());
             assert!($t::<5, 10>::new(11).is_none());

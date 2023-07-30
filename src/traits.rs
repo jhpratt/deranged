@@ -16,6 +16,30 @@ macro_rules! impl_traits_for_all {
         impl<const MIN: $inner_ty, const MAX: $inner_ty> RangeIsValid for $ranged_ty<MIN, MAX> {
             const ASSERT: () = assert!(MIN <= MAX);
         }
+
+        impl<
+            const CURRENT_MIN: $inner_ty,
+            const CURRENT_MAX: $inner_ty,
+            const NEW_MIN: $inner_ty,
+            const NEW_MAX: $inner_ty,
+        > ExpandIsValid for ($ranged_ty<CURRENT_MIN, CURRENT_MAX>, $ranged_ty<NEW_MIN, NEW_MAX>) {
+            const ASSERT: () = {
+                assert!(NEW_MIN <= CURRENT_MIN);
+                assert!(NEW_MAX >= CURRENT_MAX);
+            };
+        }
+
+        impl<
+            const CURRENT_MIN: $inner_ty,
+            const CURRENT_MAX: $inner_ty,
+            const NEW_MIN: $inner_ty,
+            const NEW_MAX: $inner_ty,
+        > NarrowIsValid for ($ranged_ty<CURRENT_MIN, CURRENT_MAX>, $ranged_ty<NEW_MIN, NEW_MAX>) {
+            const ASSERT: () = {
+                assert!(NEW_MIN >= CURRENT_MIN);
+                assert!(NEW_MAX <= CURRENT_MAX);
+            };
+        }
     )*};
 }
 
@@ -54,7 +78,13 @@ macro_rules! impl_traits_for_unsigned {
     )*};
 }
 
-declare_traits![RangeIsValid, AbsIsSafe, NegIsSafe];
+declare_traits![
+    RangeIsValid,
+    AbsIsSafe,
+    NegIsSafe,
+    ExpandIsValid,
+    NarrowIsValid,
+];
 
 impl_traits_for_signed! {
     RangedI8 i8,
