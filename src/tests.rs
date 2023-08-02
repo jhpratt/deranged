@@ -121,6 +121,12 @@ macro_rules! tests {
         )*}
 
         #[test]
+        fn new_static() {$(
+            let six: $t::<5, 10> = $t::<5, 10>::new_static::<6>();
+            assert_eq!(six, $t::<5, 10>::new(6).unwrap());
+        )*}
+
+        #[test]
         fn some_unchecked() {$(
             // Safety: The value is in range.
             unsafe {

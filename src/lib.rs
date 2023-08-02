@@ -307,6 +307,8 @@ macro_rules! impl_ranged {
             // Safety: `MAX` is in range by definition.
             pub const MAX: Self = unsafe { Self::new_unchecked(MAX) };
 
+            /// Expand the range that the value may be in. **Fails to compile** if the new range is
+            /// not a superset of the current range.
             pub const fn expand<const NEW_MIN: $internal, const NEW_MAX: $internal>(
                 self,
             ) -> $type<NEW_MIN, NEW_MAX> {
@@ -318,6 +320,9 @@ macro_rules! impl_ranged {
                 unsafe { $type::new_unchecked(self.get()) }
             }
 
+            /// Attempt to narrow the range that the value may be in. Returns `None` if the value
+            /// is outside the new range. **Fails to compile** if the new range is not a subset of
+            /// the current range.
             pub const fn narrow<
                 const NEW_MIN: $internal,
                 const NEW_MAX: $internal,
@@ -327,6 +332,16 @@ macro_rules! impl_ranged {
                 <($type<MIN, MAX>, $type<NEW_MIN, NEW_MAX>) as $crate::traits::NarrowIsValid>
                     ::ASSERT;
                 $type::<NEW_MIN, NEW_MAX>::new(self.get())
+            }
+
+
+            /// Creates a ranged integer with a statically known value. **Fails to compile** if the
+            /// value is not in range.
+            #[inline(always)]
+            pub const fn new_static<const VALUE: $internal>() -> Self {
+                <($type<MIN, VALUE>, $type<VALUE, MAX>) as $crate::traits::StaticIsValid>::ASSERT;
+                // Safety: The value is in range.
+                unsafe { Self::new_unchecked(VALUE) }
             }
 
             #[inline]
@@ -1115,7 +1130,7 @@ macro_rules! impl_ranged {
                 ::alloc::boxed::Box::new(
                     self.get()
                         .shrink()
-                        .map(|v| Self::new_saturating(v))
+                        .filter_map(Self::new)
                 )
             }
         }

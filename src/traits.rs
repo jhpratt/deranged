@@ -40,6 +40,17 @@ macro_rules! impl_traits_for_all {
                 assert!(NEW_MAX <= CURRENT_MAX);
             };
         }
+
+        impl<
+            const VALUE: $inner_ty,
+            const MIN: $inner_ty,
+            const MAX: $inner_ty,
+        > StaticIsValid for ($ranged_ty<MIN, VALUE>, $ranged_ty<VALUE, MAX>) {
+            const ASSERT: () = {
+                assert!(VALUE >= MIN);
+                assert!(VALUE <= MAX);
+            };
+        }
     )*};
 }
 
@@ -84,6 +95,7 @@ declare_traits![
     NegIsSafe,
     ExpandIsValid,
     NarrowIsValid,
+    StaticIsValid,
 ];
 
 impl_traits_for_signed! {
