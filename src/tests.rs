@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 use std::hash::Hash;
 
 use crate::{
@@ -105,13 +103,13 @@ macro_rules! tests {
         #[test]
         fn expand() {$(
             let expanded: $t::<0, 20> = $t::<5, 10>::MAX.expand();
-            assert_eq!(expanded, $t::<0, 20>::new(10).unwrap());
+            assert_eq!(expanded, $t::<0, 20>::new_static::<10>());
         )*}
 
         #[test]
         fn narrow() {$(
-            let narrowed: Option<$t::<10, 20>> = $t::<0, 20>::new(10).unwrap().narrow();
-            assert_eq!(narrowed, $t::<10, 20>::new(10));
+            let narrowed: Option<$t::<10, 20>> = $t::<0, 20>::new_static::<10>().narrow();
+            assert_eq!(narrowed, Some($t::<10, 20>::MIN));
         )*}
 
         #[test]
@@ -123,7 +121,7 @@ macro_rules! tests {
         #[test]
         fn new_static() {$(
             let six: $t::<5, 10> = $t::<5, 10>::new_static::<6>();
-            assert_eq!(six, $t::<5, 10>::new(6).unwrap());
+            assert_eq!(Some(six), $t::<5, 10>::new(6));
         )*}
 
         #[test]
@@ -171,7 +169,7 @@ macro_rules! tests {
         fn new_saturating() {$(
             assert_eq!($t::<5, 10>::new_saturating(11), $t::<5, 10>::MAX);
             assert_eq!($t::<5, 10>::new_saturating(0), $t::<5, 10>::MIN);
-            assert_eq!($t::<5, 10>::new_saturating(9), $t::<5, 10>::new(9).unwrap());
+            assert_eq!($t::<5, 10>::new_saturating(9), $t::<5, 10>::new_static::<9>());
         )*}
 
         #[test]
@@ -517,11 +515,12 @@ macro_rules! tests {
 
         #[cfg(feature = "serde")]
         #[test]
-        fn serde() {$(
+        fn serde() -> serde_json::Result<()> {
+            $(
             let val = $t::<5, 10>::MAX;
-            let serialized = serde_json::to_string(&val).unwrap();
+            let serialized = serde_json::to_string(&val)?;
             assert_eq!(serialized, "10");
-            let deserialized: $t<5, 10> = serde_json::from_str(&serialized).unwrap();
+            let deserialized: $t<5, 10> = serde_json::from_str(&serialized)?;
             assert_eq!(deserialized, val);
 
             assert!(serde_json::from_str::<$t<5, 10>>("").is_err());
@@ -529,9 +528,9 @@ macro_rules! tests {
             assert!(serde_json::from_str::<$t<5, 10>>("11").is_err());
 
             let val = $opt::<5, 10>::Some($t::<5, 10>::MAX);
-            let serialized = serde_json::to_string(&val).unwrap();
+            let serialized = serde_json::to_string(&val)?;
             assert_eq!(serialized, "10");
-            let deserialized: $opt<5, 10> = serde_json::from_str(&serialized).unwrap();
+            let deserialized: $opt<5, 10> = serde_json::from_str(&serialized)?;
             assert_eq!(deserialized, val);
 
             assert!(serde_json::from_str::<$opt<5, 10>>("").is_err());
@@ -539,13 +538,15 @@ macro_rules! tests {
             assert!(serde_json::from_str::<$opt<5, 10>>("11").is_err());
 
             let val = $opt::<5, 10>::None;
-            let serialized = serde_json::to_string(&val).unwrap();
+            let serialized = serde_json::to_string(&val)?;
             assert_eq!(serialized, "null");
 
             assert!(serde_json::from_str::<$opt<5, 10>>("").is_err());
             assert!(serde_json::from_str::<$opt<5, 10>>("4").is_err());
             assert!(serde_json::from_str::<$opt<5, 10>>("11").is_err());
-        )*}
+            )*
+            Ok(())
+        }
 
         #[cfg(feature = "rand")]
         #[test]
