@@ -359,6 +359,52 @@ macro_rules! impl_ranged {
                 }
             }
 
+
+            /// Converts a string slice in a given base to an integer.
+            ///
+            /// The string is expected to be an optional `+` or `-` sign followed by digits. Leading
+            /// and trailing whitespace represent an error. Digits are a subset of these characters,
+            /// depending on `radix`:
+            ///
+            /// - `0-9`
+            /// - `a-z`
+            /// - `A-Z`
+            ///
+            /// # Panics
+            ///
+            /// Panics if `radix` is not in the range `2..=36`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```rust
+            #[doc = concat!("# use deranged::", stringify!($type), ";")]
+            #[doc = concat!(
+                "assert_eq!(",
+                stringify!($type),
+                "::<5, 10>::from_str_radix(\"A\", 16), Ok(",
+                stringify!($type),
+                "::new_static::<10>()));",
+            )]
+            /// ```
+            #[inline]
+            pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                match $internal::from_str_radix(src, radix) {
+                    Ok(value) if value > MAX => {
+                        Err(ParseIntError { kind: IntErrorKind::PosOverflow })
+                    }
+                    Ok(value) if value < MIN => {
+                        Err(ParseIntError { kind: IntErrorKind::NegOverflow })
+                    }
+                    // Safety: If the value was out of range, it would have been caught in a
+                    // previous arm.
+                    Ok(value) => Ok(unsafe { Self::new_unchecked(value) }),
+                    Err(e) => Err(ParseIntError { kind: e.kind().clone() }),
+                }
+            }
+
             /// Checked integer addition. Computes `self + rhs`, returning `None` if the resulting
             /// value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]

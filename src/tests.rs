@@ -175,6 +175,24 @@ macro_rules! tests {
         )*}
 
         #[test]
+        fn from_str_radix() {$(
+            assert_eq!($t::<5, 10>::from_str_radix("10", 10), Ok($t::<5, 10>::MAX));
+            assert_eq!($t::<5, 10>::from_str_radix("5", 10), Ok($t::<5, 10>::MIN));
+            assert_eq!(
+                $t::<5, 10>::from_str_radix("4", 10),
+                Err(ParseIntError { kind: IntErrorKind::NegOverflow }),
+            );
+            assert_eq!(
+                $t::<5, 10>::from_str_radix("11", 10),
+                Err(ParseIntError { kind: IntErrorKind::PosOverflow }),
+            );
+            assert_eq!(
+                $t::<5, 10>::from_str_radix("", 10),
+                Err(ParseIntError { kind: IntErrorKind::Empty }),
+            );
+        )*}
+
+        #[test]
         fn checked_add() {$(
             assert_eq!($t::<5, 10>::MAX.checked_add(1), None);
             assert_eq!($t::<5, 10>::MAX.checked_add(0), Some($t::<5, 10>::MAX));
