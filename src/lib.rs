@@ -134,14 +134,19 @@ macro_rules! unsafe_unwrap_unchecked {
     }};
 }
 
-macro_rules! assume {
-    ($e:expr) => {{
-        let val = $e;
-        debug_assert!(val);
-        if !val {
-            core::hint::unreachable_unchecked()
-        }
-    }};
+/// Informs the optimizer that a condition is always true. If the condition is false, the behavior
+/// is undefined.
+///
+/// # Safety
+///
+/// `b` must be `true`.
+#[inline]
+const unsafe fn assume(b: bool) {
+    debug_assert!(b);
+    if !b {
+        // Safety: The caller must ensure that `b` is true.
+        unsafe { core::hint::unreachable_unchecked() }
+    }
 }
 
 macro_rules! impl_ranged {
@@ -208,7 +213,7 @@ macro_rules! impl_ranged {
                 pub const unsafe fn new_unchecked(value: $internal) -> Self {
                     <Self as $crate::traits::RangeIsValid>::ASSERT;
                     // Safety: The caller must ensure that the value is in range.
-                    unsafe { assume!(MIN <= value && value <= MAX) };
+                    unsafe { $crate::assume(MIN <= value && value <= MAX) };
                     Self(value)
                 }
 
@@ -229,7 +234,7 @@ macro_rules! impl_ranged {
                 pub const fn get(self) -> $internal {
                     <Self as $crate::traits::RangeIsValid>::ASSERT;
                     // Safety: A stored value is always in range.
-                    unsafe { assume!(MIN <= self.0 && self.0 <= MAX) };
+                    unsafe { $crate::assume(MIN <= self.0 && self.0 <= MAX) };
                     self.0
                 }
 
@@ -237,7 +242,7 @@ macro_rules! impl_ranged {
                 pub(crate) const fn get_ref(&self) -> &$internal {
                     <Self as $crate::traits::RangeIsValid>::ASSERT;
                     // Safety: A stored value is always in range.
-                    unsafe { assume!(MIN <= self.0 && self.0 <= MAX) };
+                    unsafe { $crate::assume(MIN <= self.0 && self.0 <= MAX) };
                     &self.0
                 }
             }
@@ -285,7 +290,7 @@ macro_rules! impl_ranged {
                 pub const unsafe fn some_unchecked(value: $internal) -> Self {
                     <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
                     // Safety: The caller must ensure that the value is in range.
-                    unsafe { assume!(MIN <= value && value <= MAX) };
+                    unsafe { $crate::assume(MIN <= value && value <= MAX) };
                     Self(value)
                 }
 
