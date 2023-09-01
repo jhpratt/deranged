@@ -792,6 +792,30 @@ macro_rules! impl_ranged {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 Self::new_saturating(self.get().saturating_pow(exp))
             }
+
+            /// Wrapping integer addition. Computes `self + rhs`, wrapping around the numeric
+            /// bounds.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[inline]
+            pub fn wrapping_add(self, rhs: $internal) -> Self {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                let inner = self.get();
+                let range_len = Self::MAX.get().abs_diff(Self::MIN.get()) + 1;
+                let offset = rhs.rem_euclid(range_len.try_into().expect("Length of valid range is greater than the largest value in the type"));
+                let greater_vals = Self::MAX.get() - inner;
+                // No wrap
+                if offset <= greater_vals {
+                    // Safety: offset <= greater_vals. No overflow.
+                    unsafe { Self::new_unchecked(inner + offset) }
+                }
+                // Wrap
+                else {
+                    // Safety:
+                    // - offset < range_len by rem_euclid (MIN + ... safe)
+                    // - offset > greater_values from if statement (offset - (greater_values + 1) safe)
+                    unsafe { Self::new_unchecked(Self::MIN.get() + (offset - (greater_vals + 1))) }
+                }
+            }
         }
 
         impl<const MIN: $internal, const MAX: $internal> $optional_type<MIN, MAX> {

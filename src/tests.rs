@@ -386,6 +386,18 @@ macro_rules! tests {
         )*}
 
         #[test]
+        fn wrapping_add() {$(
+                assert_eq!($t::<5, 10>::MAX.wrapping_add(0), $t::<5, 10>::MAX);
+                assert_eq!($t::<5, 10>::MAX.wrapping_add(1), $t::<5, 10>::MIN);
+            )*
+            $(if_signed! { $signed
+                assert_eq!($t::<-5, 10>::MAX.wrapping_add(0), $t::<-5, 10>::MAX);
+                assert_eq!($t::<-5, 10>::MAX.wrapping_add(1), $t::<-5, 10>::MIN);
+                assert_eq!($t::<-5, 10>::MIN.wrapping_add(-1), $t::<-5, 10>::MAX);
+            })*
+        }
+
+        #[test]
         fn saturating_sub() {$(
             assert_eq!($t::<5, 10>::MIN.saturating_sub(0), $t::<5, 10>::MIN);
             assert_eq!($t::<5, 10>::MIN.saturating_sub(1), $t::<5, 10>::MIN);
