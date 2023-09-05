@@ -389,11 +389,15 @@ macro_rules! tests {
         fn wrapping_add() {$(
                 assert_eq!($t::<5, 10>::MAX.wrapping_add(0), $t::<5, 10>::MAX);
                 assert_eq!($t::<5, 10>::MAX.wrapping_add(1), $t::<5, 10>::MIN);
+                assert_eq!($t::<{ $inner::MIN }, { $inner::MAX }>::MAX.wrapping_add(1), $t::<{ $inner::MIN }, { $inner::MAX }>::MIN);
             )*
             $(if_signed! { $signed
                 assert_eq!($t::<-5, 10>::MAX.wrapping_add(0), $t::<-5, 10>::MAX);
                 assert_eq!($t::<-5, 10>::MAX.wrapping_add(1), $t::<-5, 10>::MIN);
                 assert_eq!($t::<-5, 10>::MIN.wrapping_add(-1), $t::<-5, 10>::MAX);
+                // TODO fix this test case:
+                // assert_eq!($t::<-5, 127>::MIN.wrapping_add(-1), $t::<-5, 127>::MAX);
+                assert_eq!($t::<{ $inner::MIN }, { $inner::MAX }>::MIN.wrapping_add(-1), $t::<{ $inner::MIN }, { $inner::MAX }>::MAX);
             })*
         }
 

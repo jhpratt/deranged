@@ -798,6 +798,12 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub fn wrapping_add(self, rhs: $internal) -> Self {
+                // Forward to type impl if same as type.
+                if MIN == $internal::MIN && MAX == $internal::MAX {
+                    // Safety: std impl is safe
+                    return unsafe { Self::new_unchecked(self.get().wrapping_add(rhs)) }
+                }
+
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 let inner = self.get();
                 let range_len = Self::MAX.get().abs_diff(Self::MIN.get()) + 1;
