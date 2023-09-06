@@ -806,7 +806,11 @@ macro_rules! impl_ranged {
 
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 let inner = self.get();
-                let range_len = if let Some(x) = MAX.checked_sub(MIN) { x + 1 } else { panic!("Range size greater than the largest value in the type") };
+                // TODO replace with expect when it is made const.
+                let range_len = match MAX.checked_sub(MIN) {
+                    Some(x) => x + 1,
+                    None => panic!("Range size greater than the largest value in the type")
+                };
                 let offset = rhs.rem_euclid(range_len);
                 let greater_vals = MAX - inner;
                 // No wrap
