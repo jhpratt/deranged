@@ -797,7 +797,7 @@ macro_rules! impl_ranged {
             /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
-            pub fn wrapping_add(self, rhs: $internal) -> Self {
+            pub const fn wrapping_add(self, rhs: $internal) -> Self {
                 // Forward to type impl if same as type.
                 if MIN == $internal::MIN && MAX == $internal::MAX {
                     // Safety: std impl is safe
@@ -806,9 +806,9 @@ macro_rules! impl_ranged {
 
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 let inner = self.get();
-                let range_len = Self::MAX.get().abs_diff(Self::MIN.get()) + 1;
-                let offset = rhs.rem_euclid(range_len.try_into().expect("Length of valid range is greater than the largest value in the type"));
-                let greater_vals = Self::MAX.get() - inner;
+                let range_len = if let Some(x) = MAX.checked_sub(MIN) { x + 1 } else { panic!("Range size greater than the largest value in the type") };
+                let offset = rhs.rem_euclid(range_len);
+                let greater_vals = MAX - inner;
                 // No wrap
                 if offset <= greater_vals {
                     // Safety: offset <= greater_vals. No overflow.
@@ -819,7 +819,7 @@ macro_rules! impl_ranged {
                     // Safety:
                     // - offset < range_len by rem_euclid (MIN + ... safe)
                     // - offset > greater_values from if statement (offset - (greater_values + 1) safe)
-                    unsafe { Self::new_unchecked(Self::MIN.get() + (offset - (greater_vals + 1))) }
+                    unsafe { Self::new_unchecked(MIN + (offset - (greater_vals + 1))) }
                 }
             }
         }
