@@ -155,6 +155,7 @@ macro_rules! impl_ranged {
             mod_name: $mod_name:ident
             internal: $internal:ident
             signed: $is_signed:ident
+            unsigned: $unsigned_type:ident
             optional: $optional_type:ident
         }
     )*) => {$(
@@ -797,7 +798,9 @@ macro_rules! impl_ranged {
             /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
-            pub const fn wrapping_add(self, rhs: $internal) -> Self {
+            #[allow(trivial_casts, trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
+            pub fn wrapping_add(self, rhs: $internal) -> Self {
+                dbg!(self, rhs, MIN, MAX);
                 // Forward to type impl if same as type.
                 if MIN == $internal::MIN && MAX == $internal::MAX {
                     // Safety: std impl is safe
@@ -807,23 +810,52 @@ macro_rules! impl_ranged {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 let inner = self.get();
                 // TODO replace with expect when it is made const.
-                let range_len = match MAX.checked_sub(MIN) {
-                    Some(x) => x + 1,
-                    None => panic!("Range size greater than the largest value in the type")
+                let range_len = dbg!(MAX.abs_diff(MIN) + 1);
+                // Calculate the offset with proper handling for negative rhs
+                #[allow(unused_comparisons)]
+                let offset = if rhs >= 0 {
+                    (rhs as $unsigned_type) % range_len
+                } else {
+                    // Can't negate unsigned and unsigned no't have `abs()` method. This gets around compilation error.
+                    let rhs_abs = (rhs - rhs - rhs) as $unsigned_type;
+                    // Largest multiple of range_len <= type::MAX is lowest if range_len * 2 > unsigned::MAX -> range_len > unsigned::MAX / 2
+                    // Also = 0 in % range_len arithmetic.
+                    // Sub from this large number rhs_abs (-rhs) to get rhs % range_len
+                    // Signed::MIN = -2^(n-1) so 0 <= rhs_abs <= 2^(n-1)
+                    // Unsigned::MAX / 2 = 2^(n-1) so this subtraction will always be a > 0 after subtraction
+                    // Thus converting rhs signed negative to equivalent positive value in % range_len arithmetic
+                    ((($unsigned_type::MAX / range_len) * range_len) - (rhs_abs)) % range_len
                 };
-                let offset = rhs.rem_euclid(range_len);
-                let greater_vals = MAX - inner;
+                // Wrap only occurs if `inner` negative (inner <= MAX). If inner negative then subtracting negative affects the bits the same as an unsigned addition.
+                // Allowing wrap since this will flip from >signed::MAX to negative but bit pattern treated as unsigned will be a correct addition.
+                // ex. 127i8.wrapping_sub(-2) = -127 (10000001) = 129 unsigned
+                // Won't overflow as an unsigned addition because if inner == MIN then this becomes MAX+MIN
+                // but already handled case where MAX+MIN = unsigned::MAX (signed::MAX & signed::MIN check forwarded to std) so this will be < unsigned::MAX bit pattern.
+                // Then cast treats bit pattern as unsigned.
+                //
+                // If MAX < 0 since inner <= MAX means |inner| > |MAX| so MAX-(-|inner|) >= 0
+                let greater_vals = (MAX.wrapping_sub(inner)) as $unsigned_type;
                 // No wrap
                 if offset <= greater_vals {
-                    // Safety: offset <= greater_vals. No overflow.
-                    unsafe { Self::new_unchecked(inner + offset) }
+                    // Safety:
+                    // If no wrap (offset <= greater_vals) so no overflow beyond range.
+                    //
+                    // If wrap add then offset + inner > unsigned::MAX
+                    // Since offset not > greater_vals this can only happen if inner was negative.
+                    // If inner was negative then
+                    // TODO
+                    unsafe { Self::new_unchecked(dbg!(dbg!(dbg!(inner) as $unsigned_type).wrapping_add(dbg!(offset))) as $internal) }
                 }
                 // Wrap
                 else {
                     // Safety:
+                    // no wrap
                     // - offset < range_len by rem_euclid (MIN + ... safe)
                     // - offset > greater_values from if statement (offset - (greater_values + 1) safe)
-                    unsafe { Self::new_unchecked(MIN + (offset - (greater_vals + 1))) }
+                    //
+                    // If wrap
+                    // TODO
+                    unsafe { Self::new_unchecked(((MIN as $unsigned_type).wrapping_add(offset.wrapping_sub((greater_vals + 1)))) as $internal) }
                 }
             }
         }
@@ -1244,72 +1276,84 @@ impl_ranged! {
         mod_name: ranged_u8
         internal: u8
         signed: false
+        unsigned: u8
         optional: OptionRangedU8
     }
     RangedU16 {
         mod_name: ranged_u16
         internal: u16
         signed: false
+        unsigned: u16
         optional: OptionRangedU16
     }
     RangedU32 {
         mod_name: ranged_u32
         internal: u32
         signed: false
+        unsigned: u32
         optional: OptionRangedU32
     }
     RangedU64 {
         mod_name: ranged_u64
         internal: u64
         signed: false
+        unsigned: u64
         optional: OptionRangedU64
     }
     RangedU128 {
         mod_name: ranged_u128
         internal: u128
         signed: false
+        unsigned: u128
         optional: OptionRangedU128
     }
     RangedUsize {
         mod_name: ranged_usize
         internal: usize
         signed: false
+        unsigned: usize
         optional: OptionRangedUsize
     }
     RangedI8 {
         mod_name: ranged_i8
         internal: i8
         signed: true
+        unsigned: u8
         optional: OptionRangedI8
     }
     RangedI16 {
         mod_name: ranged_i16
         internal: i16
         signed: true
+        unsigned: u16
         optional: OptionRangedI16
     }
     RangedI32 {
         mod_name: ranged_i32
         internal: i32
         signed: true
+        unsigned: u32
         optional: OptionRangedI32
     }
     RangedI64 {
         mod_name: ranged_i64
         internal: i64
         signed: true
+        unsigned: u64
         optional: OptionRangedI64
     }
     RangedI128 {
         mod_name: ranged_i128
         internal: i128
         signed: true
+        unsigned: u128
         optional: OptionRangedI128
     }
     RangedIsize {
         mod_name: ranged_isize
         internal: isize
         signed: true
+        unsigned: usize
         optional: OptionRangedIsize
     }
 }

@@ -391,13 +391,23 @@ macro_rules! tests {
                 assert_eq!($t::<5, 10>::MAX.wrapping_add(1), $t::<5, 10>::MIN);
                 assert_eq!($t::<{ $inner::MIN }, { $inner::MAX }>::MAX.wrapping_add(1),
                            $t::<{ $inner::MIN }, { $inner::MAX }>::MIN);
-            )*
+                        )*
             $(if_signed! { $signed
+                for i in 1..=127 {
+                    assert_eq!($t::<-5, 126>::MIN.wrapping_add(-i), $t::<-5,126>::new(126-i+1).unwrap_or_else(|| panic!("{i} not {}", 126-i+1)), "{i}");
+                    assert_eq!($t::<-5, 126>::MIN.wrapping_add(i), $t::<-5,126>::new(-5+i).unwrap_or_else(|| panic!("{i} not {}", 126-i+1)), "{i}");
+                }
                 assert_eq!($t::<-5, 10>::MAX.wrapping_add(0), $t::<-5, 10>::MAX);
+                assert_eq!($t::<-5, -3>::MIN.wrapping_add(-1-3), $t::<-5, -3>::MAX);
+                assert_eq!($t::<-5, -3>::MIN.wrapping_add(-1-30), $t::<-5, -3>::MAX);
+                assert_eq!($t::<-5, -3>::MIN.wrapping_add(30), $t::<-5, -3>::MIN);
+                assert_eq!($t::<-5, -3>::MIN.wrapping_add(-30), $t::<-5, -3>::MIN);
+                assert_eq!($t::<-5, 10>::MAX.wrapping_add(25), $t::<-5, 10>::MIN.wrapping_add(24));
+                assert_eq!($t::<-5, 10>::MIN.wrapping_add(24), $t::<-5, 10>::MIN.wrapping_add(8));
                 assert_eq!($t::<-5, 10>::MAX.wrapping_add(1), $t::<-5, 10>::MIN);
                 assert_eq!($t::<-5, 10>::MIN.wrapping_add(-1), $t::<-5, 10>::MAX);
-                // TODO fix this test case:
-                // assert_eq!($t::<-5, 127>::MIN.wrapping_add(-1), $t::<-5, 127>::MAX);
+                assert_eq!($t::<-5, 127>::MIN.wrapping_add(-1), $t::<-5, 127>::MAX);
+                assert_eq!($t::<-127, 126>::MIN.wrapping_add(-1), $t::<-127, 126>::MAX);
                 assert_eq!($t::<{ $inner::MIN }, { $inner::MAX }>::MIN.wrapping_add(-1),
                            $t::<{ $inner::MIN }, { $inner::MAX }>::MAX);
             })*
