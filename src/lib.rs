@@ -834,8 +834,9 @@ macro_rules! impl_ranged {
                     // if inner >= 0 -> No overflow beyond range (offset <= greater_vals)
                     // if inner < 0: Same as >=0 with caveat:
                     // `(signed as unsigned).wrapping_add(unsigned) as signed` is the same as
-                    // `signed::checked_add_unsigned(unsigned).unwrap()`, but unsigned integers
-                    // don't have a method `checked_add_unsigned()` so it won't compile that way.
+                    // `signed::checked_add_unsigned(unsigned).unwrap()` or `wrapping_add_unsigned`
+                    // (the difference doesn't matter since it won't overflow the signed type),
+                    // but unsigned integers don't have either method so it won't compile that way.
                     unsafe { Self::new_unchecked(((inner as $unsigned_type).wrapping_add(offset)) as $internal) }
                 }
                 // Wrap
