@@ -807,16 +807,15 @@ macro_rules! impl_ranged {
                 }
 
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
-
-                // Let ux refer to an n bit unsigned and ix refer to an n bit signed integer.
-
                 let inner = self.get();
                 let range_len = MAX.abs_diff(MIN) + 1;
                 // Calculate the offset with proper handling for negative rhs
                 #[allow(unused_comparisons)]
+                // equivalent to `rem_euclid_unsigned()` if that method existed
                 let offset = if rhs >= 0 {
                     (rhs as $unsigned_type) % range_len
                 } else {
+                    // Let ux refer to an n bit unsigned and ix refer to an n bit signed integer.
                     // Can't write -ux or ux::abs() method. This gets around compilation error.
                     let rhs_abs = (rhs - rhs - rhs) as $unsigned_type;
                     // Largest multiple of range_len <= type::MAX is lowest if range_len * 2 > ux::MAX -> range_len >= ux::MAX / 2 + 1
@@ -827,55 +826,26 @@ macro_rules! impl_ranged {
                     // Thus converting rhs signed negative to equivalent positive value in mod range_len arithmetic
                     ((($unsigned_type::MAX / range_len) * range_len) - (rhs_abs)) % range_len
                 };
-                // Wrap only occurs if `inner` < 0 since inner <= MAX. If `inner` < 0 then `- inner` = `+ |inner|`.
-                // Wrap will flip from >ix::MAX to < 0, but bit pattern treated as unsigned will be a correct addition.
-                // ex. 127i8.wrapping_sub(-2) = -127 (10000001) = 129 unsigned
-                // Won't overflow as an unsigned addition because |MAX| and |inner| <= 2^(n-1) and further either |MAX| or |inner| <= 2^(n-1)-1 because of std forwarding.
-                // 2^(n-1)+2^(n-1)-1 = 2^n-1 = ux::MAX.
-                // Then cast treats bit pattern as unsigned.
-                //
-                // If MAX < 0 since inner <= MAX means |inner| > |MAX| so MAX-(-|inner|) >= 0
-                //
-                // Thus `greater_vals` is the largest value that can be added without overflowing the MIN..=MAX range.
-                let greater_vals = (MAX.wrapping_sub(inner)) as $unsigned_type;
+
+                let greater_vals = MAX.abs_diff(inner);
                 // No wrap
                 if offset <= greater_vals {
                     // Safety:
-                    // if inner >= 0 -> No overflow beyond range (offset <= greater_vals) {
-                    //      inner + offset
-                    // }
-                    // if inner < 0 {
-                    //      inner = [ix::MIN, 0)
-                    //      let u_inner = inner as ux = inner + 2^n: [-2^(n-1)+2^n,-1+2^n] = [2^(n-1),2^n-1]
-                    //      if u_inner + offset <= ux::MAX {
-                    //          [2^(n-1),2^n-1] + offset <= ux::MAX
-                    //          -> offset = [0, 2^(n-1)-1]
-                    //          ((u_inner + offset) % (ux::MAX + 1)) as ix = (u_inner + offset) as ix
-                    //          [2^(n-1),2^n-1] + [0,ux::MAX]
-                    //          by ranges: u_inner + offset > 2^(n-1)-1
-                    //          (u_inner + offset) as ix = u_inner - 2^n + offset = inner + offset
-                    //      }
-                    //      else if u_inner + offset > ux::MAX {
-                    //          since offset <= greater_vals it will not overflow MAX.
-                    //          If it overflows the unsigned addition it can only be because
-                    //          a negative value was cast as positive before the addition.
-                    //          This overflow doesn't matter (so wrap) because the bit pattern will
-                    //          match the correct signed addition and won't overflow signed MAX.
-                    //          The cast then correctly interprets the final bits back as signed.
-                    //      }
-                    // }
+                    // if inner >= 0 -> No overflow beyond range (offset <= greater_vals)
+                    // if inner < 0: Same as >=0 with caveat:
+                    // `(signed as unsigned).wrapping_add(unsigned) as signed` is the same as
+                    // `signed::checked_add_unsigned(unsigned).unwrap()`, but unsigned integers
+                    // don't have a method `checked_add_unsigned()` so it won't compile that way.
                     unsafe { Self::new_unchecked(((inner as $unsigned_type).wrapping_add(offset)) as $internal) }
                 }
                 // Wrap
                 else {
                     // Safety:
-                    // no wrap
                     // - offset < range_len by rem_euclid (MIN + ... safe)
                     // - offset > greater_values from if statement (offset - (greater_values + 1) safe)
                     //
-                    // If wrap
-                    // TODO
-                    unsafe { Self::new_unchecked(((MIN as $unsigned_type).wrapping_add(offset.wrapping_sub((greater_vals + 1)))) as $internal) }
+                    // again using `(signed as unsigned).wrapping_add(unsigned) as signed` = `checked_add_unsigned` trick
+                    unsafe { Self::new_unchecked(((MIN as $unsigned_type).wrapping_add(offset - ((greater_vals + 1)))) as $internal) }
                 }
             }
         }
