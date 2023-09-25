@@ -800,14 +800,15 @@ macro_rules! impl_ranged {
             #[inline]
             #[allow(trivial_casts, trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
             pub const fn wrapping_add(self, rhs: $internal) -> Self {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
                 // Forward to type impl if same as type.
                 if MIN == $internal::MIN && MAX == $internal::MAX {
                     // Safety: std impl is safe
                     return unsafe { Self::new_unchecked(self.get().wrapping_add(rhs)) }
                 }
 
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
                 let inner = self.get();
+                // Won't overflow because of std impl forwarding.
                 let range_len = MAX.abs_diff(MIN) + 1;
                 // Calculate the offset with proper handling for negative rhs
                 #[allow(unused_comparisons)]
@@ -817,10 +818,11 @@ macro_rules! impl_ranged {
                 } else {
                     // Let ux refer to an n bit unsigned and ix refer to an n bit signed integer.
                     // Can't write -ux or ux::abs() method. This gets around compilation error.
-                    let rhs_abs = (rhs - rhs - rhs) as $unsigned_type;
+                    // `wrapping_sub` is to handle rhs = ix::MIN since ix::MIN = -ix::MAX-1
+                    let rhs_abs = ($internal::wrapping_sub(0, rhs)) as $unsigned_type;
                     // Largest multiple of range_len <= type::MAX is lowest if range_len * 2 > ux::MAX -> range_len >= ux::MAX / 2 + 1
                     // Also = 0 in mod range_len arithmetic.
-                    // Sub from this large number rhs_abs (-rhs) to get rhs % range_len
+                    // Sub from this large number rhs_abs (same as sub -rhs = -(-rhs) = add rhs) to get rhs % range_len
                     // ix::MIN = -2^(n-1) so 0 <= rhs_abs <= 2^(n-1)
                     // ux::MAX / 2 + 1 = 2^(n-1) so this subtraction will always be a >= 0 after subtraction
                     // Thus converting rhs signed negative to equivalent positive value in mod range_len arithmetic
