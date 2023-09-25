@@ -386,6 +386,44 @@ macro_rules! tests {
         )*}
 
         #[test]
+        fn wrapping_add() {
+            $(
+                assert_eq!($t::<5, 10>::MAX.wrapping_add(0), $t::<5, 10>::MAX);
+                assert_eq!($t::<5, 10>::MAX.wrapping_add(1), $t::<5, 10>::MIN);
+                assert_eq!($t::<{ $inner::MIN }, { $inner::MAX }>::MAX.wrapping_add(1),
+                           $t::<{ $inner::MIN }, { $inner::MAX }>::MIN);
+                for i in 1..127 {
+                    assert_eq!($t::<{ $inner::MIN}, { $inner::MAX - 1 }>::MAX.wrapping_add(i),
+                            $t::<{ $inner::MIN}, { $inner::MAX - 1 }>::new($inner::MIN + i - 1).unwrap_or_else(|| panic!("adding {i}+{} does not yield {}", $inner::MIN, $inner::MAX + i )));
+                }
+            )*
+            $(if_signed! { $signed
+                for i in 1..=127 {
+                    assert_eq!($t::<-5, 126>::MIN.wrapping_add(-i), $t::<-5,126>::new(126-i+1).unwrap_or_else(|| panic!("adding {i}+{} does not yield {}", $inner::MIN, 126-i+1)));
+                    assert_eq!($t::<-5, 126>::MIN.wrapping_add(i), $t::<-5,126>::new(-5+i).unwrap_or_else(|| panic!("adding {i}+{} does not yield {}", $inner::MIN, 126-i+1)));
+                }
+                for i in -127..=-1 {
+                    assert_eq!($t::<-5, 126>::MIN.wrapping_add(i), $t::<-5,126>::new(126+i+1).unwrap_or_else(|| panic!("adding {i}+{} does not yield {}", $inner::MIN, 126-i+1)));
+                    assert_eq!($t::<-5, 126>::MIN.wrapping_add(-i), $t::<-5,126>::new(-5-i).unwrap_or_else(|| panic!("adding {i}+{} does not yield {}", $inner::MIN, 126-i+1)));
+                }
+                assert_eq!($t::<-5, 126>::MIN.wrapping_add(-128), $t::<-5,126>::new(-1).unwrap_or_else(|| panic!("adding 128+{} does not yield -1", $inner::MIN)));
+                assert_eq!($t::<-5, 10>::MAX.wrapping_add(0), $t::<-5, 10>::MAX);
+                assert_eq!($t::<-5, -3>::MIN.wrapping_add(-1-3), $t::<-5, -3>::MAX);
+                assert_eq!($t::<-5, -3>::MIN.wrapping_add(-1-30), $t::<-5, -3>::MAX);
+                assert_eq!($t::<-5, -3>::MIN.wrapping_add(30), $t::<-5, -3>::MIN);
+                assert_eq!($t::<-5, -3>::MIN.wrapping_add(-30), $t::<-5, -3>::MIN);
+                assert_eq!($t::<-5, 10>::MAX.wrapping_add(25), $t::<-5, 10>::MIN.wrapping_add(24));
+                assert_eq!($t::<-5, 10>::MIN.wrapping_add(24), $t::<-5, 10>::MIN.wrapping_add(8));
+                assert_eq!($t::<-5, 10>::MAX.wrapping_add(1), $t::<-5, 10>::MIN);
+                assert_eq!($t::<-5, 10>::MIN.wrapping_add(-1), $t::<-5, 10>::MAX);
+                assert_eq!($t::<-5, 127>::MIN.wrapping_add(-1), $t::<-5, 127>::MAX);
+                assert_eq!($t::<-127, 126>::MIN.wrapping_add(-1), $t::<-127, 126>::MAX);
+                assert_eq!($t::<{ $inner::MIN }, { $inner::MAX }>::MIN.wrapping_add(-1),
+                           $t::<{ $inner::MIN }, { $inner::MAX }>::MAX);
+            })*
+        }
+
+        #[test]
         fn saturating_sub() {$(
             assert_eq!($t::<5, 10>::MIN.saturating_sub(0), $t::<5, 10>::MIN);
             assert_eq!($t::<5, 10>::MIN.saturating_sub(1), $t::<5, 10>::MIN);

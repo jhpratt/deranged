@@ -155,6 +155,7 @@ macro_rules! impl_ranged {
             mod_name: $mod_name:ident
             internal: $internal:ident
             signed: $is_signed:ident
+            unsigned: $unsigned_type:ident
             optional: $optional_type:ident
         }
     )*) => {$(
@@ -792,6 +793,70 @@ macro_rules! impl_ranged {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 Self::new_saturating(self.get().saturating_pow(exp))
             }
+
+            /// Wrapping integer addition. Computes `self + rhs`, wrapping around the numeric
+            /// bounds.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[inline]
+            #[allow(trivial_casts, trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
+            pub const fn wrapping_add(self, rhs: $internal) -> Self {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                // Forward to internal type's impl if same as type.
+                if MIN == $internal::MIN && MAX == $internal::MAX {
+                    // Safety: std's wrapping methods match ranged arithmetic when the range is the internal datatype's range.
+                    return unsafe { Self::new_unchecked(self.get().wrapping_add(rhs)) }
+                }
+
+                let inner = self.get();
+                // Won't overflow because of std impl forwarding.
+                let range_len = MAX.abs_diff(MIN) + 1;
+                // Calculate the offset with proper handling for negative rhs
+                #[allow(unused_comparisons)]
+                // equivalent to `rem_euclid_unsigned()` if that method existed
+                let offset = if rhs >= 0 {
+                    (rhs as $unsigned_type) % range_len
+                } else {
+                    // Let ux refer to an n bit unsigned and ix refer to an n bit signed integer.
+                    // Can't write -ux or ux::abs() method. This gets around compilation error.
+                    // `wrapping_sub` is to handle rhs = ix::MIN since ix::MIN = -ix::MAX-1
+                    let rhs_abs = ($internal::wrapping_sub(0, rhs)) as $unsigned_type;
+                    // Largest multiple of range_len <= type::MAX is lowest if range_len * 2 > ux::MAX -> range_len >= ux::MAX / 2 + 1
+                    // Also = 0 in mod range_len arithmetic.
+                    // Sub from this large number rhs_abs (same as sub -rhs = -(-rhs) = add rhs) to get rhs % range_len
+                    // ix::MIN = -2^(n-1) so 0 <= rhs_abs <= 2^(n-1)
+                    // ux::MAX / 2 + 1 = 2^(n-1) so this subtraction will always be a >= 0 after subtraction
+                    // Thus converting rhs signed negative to equivalent positive value in mod range_len arithmetic
+                    ((($unsigned_type::MAX / range_len) * range_len) - (rhs_abs)) % range_len
+                };
+
+                let greater_vals = MAX.abs_diff(inner);
+                // No wrap
+                if offset <= greater_vals {
+                    // Safety:
+                    // if inner >= 0 -> No overflow beyond range (offset <= greater_vals)
+                    // if inner < 0: Same as >=0 with caveat:
+                    // `(signed as unsigned).wrapping_add(unsigned) as signed` is the same as
+                    // `signed::checked_add_unsigned(unsigned).unwrap()` or `wrapping_add_unsigned`
+                    // (the difference doesn't matter since it won't overflow the signed type),
+                    // but unsigned integers don't have either method so it won't compile that way.
+                    unsafe { Self::new_unchecked(
+                        ((inner as $unsigned_type).wrapping_add(offset)) as $internal
+                    ) }
+                }
+                // Wrap
+                else {
+                    // Safety:
+                    // - offset < range_len by rem_euclid (MIN + ... safe)
+                    // - offset > greater_values from if statement (offset - (greater_values + 1) safe)
+                    //
+                    // again using `(signed as unsigned).wrapping_add(unsigned) as signed` = `checked_add_unsigned` trick
+                    unsafe { Self::new_unchecked(
+                        ((MIN as $unsigned_type).wrapping_add(
+                            offset - ((greater_vals + 1))
+                        )) as $internal
+                    ) }
+                }
+            }
         }
 
         impl<const MIN: $internal, const MAX: $internal> $optional_type<MIN, MAX> {
@@ -1210,72 +1275,84 @@ impl_ranged! {
         mod_name: ranged_u8
         internal: u8
         signed: false
+        unsigned: u8
         optional: OptionRangedU8
     }
     RangedU16 {
         mod_name: ranged_u16
         internal: u16
         signed: false
+        unsigned: u16
         optional: OptionRangedU16
     }
     RangedU32 {
         mod_name: ranged_u32
         internal: u32
         signed: false
+        unsigned: u32
         optional: OptionRangedU32
     }
     RangedU64 {
         mod_name: ranged_u64
         internal: u64
         signed: false
+        unsigned: u64
         optional: OptionRangedU64
     }
     RangedU128 {
         mod_name: ranged_u128
         internal: u128
         signed: false
+        unsigned: u128
         optional: OptionRangedU128
     }
     RangedUsize {
         mod_name: ranged_usize
         internal: usize
         signed: false
+        unsigned: usize
         optional: OptionRangedUsize
     }
     RangedI8 {
         mod_name: ranged_i8
         internal: i8
         signed: true
+        unsigned: u8
         optional: OptionRangedI8
     }
     RangedI16 {
         mod_name: ranged_i16
         internal: i16
         signed: true
+        unsigned: u16
         optional: OptionRangedI16
     }
     RangedI32 {
         mod_name: ranged_i32
         internal: i32
         signed: true
+        unsigned: u32
         optional: OptionRangedI32
     }
     RangedI64 {
         mod_name: ranged_i64
         internal: i64
         signed: true
+        unsigned: u64
         optional: OptionRangedI64
     }
     RangedI128 {
         mod_name: ranged_i128
         internal: i128
         signed: true
+        unsigned: u128
         optional: OptionRangedI128
     }
     RangedIsize {
         mod_name: ranged_isize
         internal: isize
         signed: true
+        unsigned: usize
         optional: OptionRangedIsize
     }
 }
