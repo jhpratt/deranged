@@ -801,9 +801,9 @@ macro_rules! impl_ranged {
             #[allow(trivial_casts, trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
             pub const fn wrapping_add(self, rhs: $internal) -> Self {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
-                // Forward to type impl if same as type.
+                // Forward to internal type's impl if same as type.
                 if MIN == $internal::MIN && MAX == $internal::MAX {
-                    // Safety: std impl is safe
+                    // Safety: std's wrapping methods match ranged arithmetic when the range is the internal datatype's range.
                     return unsafe { Self::new_unchecked(self.get().wrapping_add(rhs)) }
                 }
 
