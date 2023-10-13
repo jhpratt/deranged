@@ -15,6 +15,7 @@ include = ["src/**/*", "LICENSE-*", "README.md"]
 default = ["std"]
 alloc = []
 num = ["dep:num-traits"]
+powerfmt = ["dep:powerfmt"]
 quickcheck = ["dep:quickcheck", "alloc"]
 rand = ["dep:rand"]
 serde = ["dep:serde"]
@@ -27,6 +28,7 @@ rustdoc-args = ["--cfg", "docs_rs"]
 
 [dependencies]
 num-traits = { version = "0.2.15", optional = true, default-features = false }
+powerfmt = { version = "0.2.0", optional = true, default-features = false }
 quickcheck = { version = "1.0.3", default-features = false, optional = true }
 rand = { version = "0.8.4", optional = true, default-features = false }
 serde = { version = "1.0.126", optional = true, default-features = false }

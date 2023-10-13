@@ -56,6 +56,9 @@ use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error;
 
+#[cfg(feature = "powerfmt")]
+use powerfmt::smart_display;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TryFromIntError;
 
@@ -902,6 +905,33 @@ macro_rules! impl_ranged {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 self.get().fmt(f)
+            }
+        }
+
+        #[cfg(feature = "powerfmt")]
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > smart_display::SmartDisplay for $type<MIN, MAX> {
+            type Metadata = <$internal as smart_display::SmartDisplay>::Metadata;
+
+            #[inline(always)]
+            fn metadata(
+                &self,
+                f: smart_display::FormatterOptions,
+            ) -> smart_display::Metadata<'_, Self> {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                self.get_ref().metadata(f).reuse()
+            }
+
+            #[inline(always)]
+            fn fmt_with_metadata(
+                &self,
+                f: &mut fmt::Formatter<'_>,
+                metadata: smart_display::Metadata<'_, Self>,
+            ) -> fmt::Result {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                self.get().fmt_with_metadata(f, metadata.reuse())
             }
         }
 
