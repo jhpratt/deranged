@@ -233,6 +233,18 @@ macro_rules! impl_ranged {
                     }
                 }
 
+                #[inline(always)]
+                pub(crate) const fn new_saturating(value: $internal) -> Self {
+                    <Self as $crate::traits::RangeIsValid>::ASSERT;
+                    Self(if value < MIN {
+                        MIN
+                    } else if value > MAX {
+                        MAX
+                    } else {
+                        value
+                    })
+                }
+
                 /// Returns the value as a primitive type.
                 #[inline(always)]
                 pub const fn get(self) -> $internal {
@@ -325,8 +337,8 @@ macro_rules! impl_ranged {
                 <$type<NEW_MIN, NEW_MAX> as $crate::traits::RangeIsValid>::ASSERT;
                 <($type<MIN, MAX>, $type<NEW_MIN, NEW_MAX>) as $crate::traits::ExpandIsValid>
                     ::ASSERT;
-                // Safety: The range is widened.
-                unsafe { $type::new_unchecked(self.get()) }
+                // Optimization: Compiler will remove extra comparisons
+                $type::new_saturating(self.get())
             }
 
             /// Attempt to narrow the range that the value may be in. Returns `None` if the value
@@ -349,24 +361,10 @@ macro_rules! impl_ranged {
             #[inline(always)]
             pub const fn new_static<const VALUE: $internal>() -> Self {
                 <($type<MIN, VALUE>, $type<VALUE, MAX>) as $crate::traits::StaticIsValid>::ASSERT;
-                // Safety: The value is in range.
-                unsafe { Self::new_unchecked(VALUE) }
+                // Optimization: Compiler will remove extra comparisons
+                Self::new_saturating(VALUE)
             }
 
-            #[inline]
-            const fn new_saturating(value: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
-                // Safety: The value is clamped to the range.
-                unsafe {
-                    Self::new_unchecked(if value < MIN {
-                        MIN
-                    } else if value > MAX {
-                        MAX
-                    } else {
-                        value
-                    })
-                }
-            }
 
 
             /// Converts a string slice in a given base to an integer.
@@ -407,9 +405,8 @@ macro_rules! impl_ranged {
                     Ok(value) if value < MIN => {
                         Err(ParseIntError { kind: IntErrorKind::NegOverflow })
                     }
-                    // Safety: If the value was out of range, it would have been caught in a
-                    // previous arm.
-                    Ok(value) => Ok(unsafe { Self::new_unchecked(value) }),
+                    // Optimization: Compiler will remove extra comparisons
+                    Ok(value) => Ok(Self::new_saturating(value)),
                     Err(e) => Err(ParseIntError { kind: e.kind().clone() }),
                 }
             }
@@ -630,8 +627,8 @@ macro_rules! impl_ranged {
             pub const fn neg(self) -> Self {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 <Self as $crate::traits::NegIsSafe>::ASSERT;
-                // Safety: The compiler asserts that the result is in range.
-                unsafe { self.unchecked_neg() }
+                // Optimization: Compiler will remove extra comparisons
+                Self::new_saturating(self.get().wrapping_neg())
             }
 
             /// Checked shift left. Computes `self << rhs`, returning `None` if the resulting value
@@ -713,8 +710,8 @@ macro_rules! impl_ranged {
             pub const fn abs(self) -> Self {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 <Self as $crate::traits::AbsIsSafe>::ASSERT;
-                // Safety: The compiler asserts that the result is in range.
-                unsafe { self.unchecked_abs() }
+                // Optimization: Compiler will remove extra comparisons
+                Self::new_saturating(self.get().abs())
             });
 
             /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if the resulting
@@ -806,8 +803,9 @@ macro_rules! impl_ranged {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 // Forward to internal type's impl if same as type.
                 if MIN == $internal::MIN && MAX == $internal::MAX {
-                    // Safety: std's wrapping methods match ranged arithmetic when the range is the internal datatype's range.
-                    return unsafe { Self::new_unchecked(self.get().wrapping_add(rhs)) }
+                    // std's wrapping methods match ranged arithmetic when the range is the internal datatype's range.
+                    // Optimization: Compiler will remove extra comparisons
+                    return Self::new_saturating(self.get().wrapping_add(rhs));
                 }
 
                 let inner = self.get();
@@ -1158,8 +1156,8 @@ macro_rules! impl_ranged {
                 } else if value > MAX {
                     Err(ParseIntError { kind: IntErrorKind::PosOverflow })
                 } else {
-                    // Safety: The value was previously checked for validity.
-                    Ok(unsafe { Self::new_unchecked(value) })
+                    // Optimization: Compiler will remove extra comparisons
+                    Ok(Self::new_saturating(value))
                 }
             }
         }
@@ -1265,10 +1263,9 @@ macro_rules! impl_ranged {
             #[inline]
             fn arbitrary(g: &mut quickcheck::Gen) -> Self {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
-                // Safety: The `rem_euclid` call and addition ensure that the value is in range.
-                unsafe {
-                    Self::new_unchecked($internal::arbitrary(g).rem_euclid(MAX - MIN + 1) + MIN)
-                }
+                // The `rem_euclid` call and addition ensure that the value is in range.
+                // Optimization: Compiler will remove extra comparisons
+                Self::new_saturating($internal::arbitrary(g).rem_euclid(MAX - MIN + 1) + MIN)
             }
 
             #[inline]
