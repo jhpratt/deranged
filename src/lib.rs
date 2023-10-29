@@ -310,11 +310,11 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> $type<MIN, MAX> {
             /// The smallest value that can be represented by this type.
             // Safety: `MIN` is in range by definition.
-            pub const MIN: Self = unsafe { Self::new_unchecked(MIN) };
+            pub const MIN: Self = Self::new_static::<MIN>();
 
             /// The largest value that can be represented by this type.
             // Safety: `MAX` is in range by definition.
-            pub const MAX: Self = unsafe { Self::new_unchecked(MAX) };
+            pub const MAX: Self = Self::new_static::<MAX>();
 
             /// Expand the range that the value may be in. **Fails to compile** if the new range is
             /// not a superset of the current range.
