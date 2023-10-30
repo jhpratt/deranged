@@ -233,7 +233,7 @@ macro_rules! impl_ranged {
                     }
                 }
 
-                #[inline(always)]
+                #[inline]
                 pub(crate) const fn new_saturating(value: $internal) -> Self {
                     <Self as $crate::traits::RangeIsValid>::ASSERT;
                     Self(if value < MIN {
