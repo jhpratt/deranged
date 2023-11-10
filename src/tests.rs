@@ -446,8 +446,14 @@ macro_rules! tests {
                     assert_eq!($t::<-5, 126>::MIN.wrapping_add(i), $t::<-5,126>::MIN.wrapping_sub(-i), "failed test at {i}");
                     assert_eq!($t::<-5, 126>::MIN.wrapping_add(-i), $t::<-5,126>::MIN.wrapping_sub(i), "failed test at {i}");
                 }
-                assert_eq!($t::<-5, 126>::MIN.wrapping_add(127).wrapping_add(1), $t::<-5,126>::MIN.wrapping_sub(-128));
-                assert_eq!($t::<-5, 126>::MIN.wrapping_add(-128), $t::<-5,126>::MIN.wrapping_sub(127).wrapping_sub(1));
+                assert_eq!(
+                    $t::<-5, 126>::MIN.wrapping_add(127).wrapping_add(1),
+                    $t::<-5,126>::MIN.wrapping_sub(-128)
+                );
+                assert_eq!(
+                    $t::<-5, 126>::MIN.wrapping_add(-128),
+                    $t::<-5,126>::MIN.wrapping_sub(127).wrapping_sub(1)
+                );
             })*
         }
 

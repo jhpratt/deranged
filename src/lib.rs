@@ -804,7 +804,10 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             #[allow(trivial_casts, trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
-            const fn rem_euclid_unsigned(rhs: $internal, range_len: $unsigned_type) -> $unsigned_type {
+            const fn rem_euclid_unsigned(
+                rhs: $internal,
+                range_len: $unsigned_type
+            ) -> $unsigned_type {
                 #[allow(unused_comparisons)]
                 // equivalent to `rem_euclid_unsigned()` if that method existed
                 if rhs >= 0 {
