@@ -797,6 +797,33 @@ macro_rules! impl_ranged {
                 Self::new_saturating(self.get().saturating_pow(exp))
             }
 
+            /// Compute the rem_euclid of this type with its unsigned type equivalent
+            // Not public because it doesn't match stdlib's "method_unsigned implemented only for signed type" tradition.
+            // Also because this isn't implemented for normal types in std.
+            // TODO maybe make public anyway? It is useful.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[inline]
+            #[allow(trivial_casts, trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
+            const fn rem_euclid_unsigned(rhs: $internal, range_len: $unsigned_type) -> $unsigned_type {
+                #[allow(unused_comparisons)]
+                // equivalent to `rem_euclid_unsigned()` if that method existed
+                if rhs >= 0 {
+                    (rhs as $unsigned_type) % range_len
+                } else {
+                    // Let ux refer to an n bit unsigned and ix refer to an n bit signed integer.
+                    // Can't write -ux or ux::abs() method. This gets around compilation error.
+                    // `wrapping_sub` is to handle rhs = ix::MIN since ix::MIN = -ix::MAX-1
+                    let rhs_abs = ($internal::wrapping_sub(0, rhs)) as $unsigned_type;
+                    // Largest multiple of range_len <= type::MAX is lowest if range_len * 2 > ux::MAX -> range_len >= ux::MAX / 2 + 1
+                    // Also = 0 in mod range_len arithmetic.
+                    // Sub from this large number rhs_abs (same as sub -rhs = -(-rhs) = add rhs) to get rhs % range_len
+                    // ix::MIN = -2^(n-1) so 0 <= rhs_abs <= 2^(n-1)
+                    // ux::MAX / 2 + 1 = 2^(n-1) so this subtraction will always be a >= 0 after subtraction
+                    // Thus converting rhs signed negative to equivalent positive value in mod range_len arithmetic
+                    ((($unsigned_type::MAX / range_len) * range_len) - (rhs_abs)) % range_len
+                }
+            }
+
             /// Wrapping integer addition. Computes `self + rhs`, wrapping around the numeric
             /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
@@ -811,26 +838,12 @@ macro_rules! impl_ranged {
                 }
 
                 let inner = self.get();
+
                 // Won't overflow because of std impl forwarding.
                 let range_len = MAX.abs_diff(MIN) + 1;
+
                 // Calculate the offset with proper handling for negative rhs
-                #[allow(unused_comparisons)]
-                // equivalent to `rem_euclid_unsigned()` if that method existed
-                let offset = if rhs >= 0 {
-                    (rhs as $unsigned_type) % range_len
-                } else {
-                    // Let ux refer to an n bit unsigned and ix refer to an n bit signed integer.
-                    // Can't write -ux or ux::abs() method. This gets around compilation error.
-                    // `wrapping_sub` is to handle rhs = ix::MIN since ix::MIN = -ix::MAX-1
-                    let rhs_abs = ($internal::wrapping_sub(0, rhs)) as $unsigned_type;
-                    // Largest multiple of range_len <= type::MAX is lowest if range_len * 2 > ux::MAX -> range_len >= ux::MAX / 2 + 1
-                    // Also = 0 in mod range_len arithmetic.
-                    // Sub from this large number rhs_abs (same as sub -rhs = -(-rhs) = add rhs) to get rhs % range_len
-                    // ix::MIN = -2^(n-1) so 0 <= rhs_abs <= 2^(n-1)
-                    // ux::MAX / 2 + 1 = 2^(n-1) so this subtraction will always be a >= 0 after subtraction
-                    // Thus converting rhs signed negative to equivalent positive value in mod range_len arithmetic
-                    ((($unsigned_type::MAX / range_len) * range_len) - (rhs_abs)) % range_len
-                };
+                let offset = Self::rem_euclid_unsigned(rhs, range_len);
 
                 let greater_vals = MAX.abs_diff(inner);
                 // No wrap
@@ -840,7 +853,7 @@ macro_rules! impl_ranged {
                     // if inner < 0: Same as >=0 with caveat:
                     // `(signed as unsigned).wrapping_add(unsigned) as signed` is the same as
                     // `signed::checked_add_unsigned(unsigned).unwrap()` or `wrapping_add_unsigned`
-                    // (the difference doesn't matter since it won't overflow the signed type),
+                    // (the difference doesn't matter since it won't overflow),
                     // but unsigned integers don't have either method so it won't compile that way.
                     unsafe { Self::new_unchecked(
                         ((inner as $unsigned_type).wrapping_add(offset)) as $internal
@@ -855,7 +868,57 @@ macro_rules! impl_ranged {
                     // again using `(signed as unsigned).wrapping_add(unsigned) as signed` = `checked_add_unsigned` trick
                     unsafe { Self::new_unchecked(
                         ((MIN as $unsigned_type).wrapping_add(
-                            offset - ((greater_vals + 1))
+                            offset - (greater_vals + 1)
+                        )) as $internal
+                    ) }
+                }
+            }
+
+            /// Wrapping integer subtraction. Computes `self - rhs`, wrapping around the numeric
+            /// bounds.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[inline]
+            #[allow(trivial_casts, trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
+            pub const fn wrapping_sub(self, rhs: $internal) -> Self {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                // Forward to internal type's impl if same as type.
+                if MIN == $internal::MIN && MAX == $internal::MAX {
+                    // Safety: std's wrapping methods match ranged arithmetic when the range is the internal datatype's range.
+                    return unsafe { Self::new_unchecked(self.get().wrapping_sub(rhs)) }
+                }
+
+                let inner = self.get();
+
+                // Won't overflow because of std impl forwarding.
+                let range_len = MAX.abs_diff(MIN) + 1;
+
+                // Calculate the offset with proper handling for negative rhs
+                let offset = Self::rem_euclid_unsigned(rhs, range_len);
+
+                let lesser_vals = MIN.abs_diff(inner);
+                // No wrap
+                if offset <= lesser_vals {
+                    // Safety:
+                    // if inner >= 0 -> No overflow beyond range (offset <= greater_vals)
+                    // if inner < 0: Same as >=0 with caveat:
+                    // `(signed as unsigned).wrapping_sub(unsigned) as signed` is the same as
+                    // `signed::checked_sub_unsigned(unsigned).unwrap()` or `wrapping_sub_unsigned`
+                    // (the difference doesn't matter since it won't overflow below 0),
+                    // but unsigned integers don't have either method so it won't compile that way.
+                    unsafe { Self::new_unchecked(
+                        ((inner as $unsigned_type).wrapping_sub(offset)) as $internal
+                    ) }
+                }
+                // Wrap
+                else {
+                    // Safety:
+                    // - offset < range_len by rem_euclid (MIN + ... safe)
+                    // - offset > greater_values from if statement (offset - (greater_values + 1) safe)
+                    //
+                    // again using `(signed as unsigned).wrapping_sub(unsigned) as signed` = `checked_sub_unsigned` trick
+                    unsafe { Self::new_unchecked(
+                        ((MAX as $unsigned_type).wrapping_sub(
+                            offset - (lesser_vals + 1)
                         )) as $internal
                     ) }
                 }
