@@ -803,7 +803,7 @@ macro_rules! impl_ranged {
             // TODO maybe make public anyway? It is useful.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
-            #[allow(trivial_casts, trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
+            #[allow(trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
             const fn rem_euclid_unsigned(
                 rhs: $internal,
                 range_len: $unsigned_type
@@ -830,7 +830,7 @@ macro_rules! impl_ranged {
             /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
-            #[allow(trivial_casts, trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
+            #[allow(trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
             pub const fn wrapping_add(self, rhs: $internal) -> Self {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 // Forward to internal type's impl if same as type.
@@ -880,7 +880,7 @@ macro_rules! impl_ranged {
             /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
-            #[allow(trivial_casts, trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
+            #[allow(trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
             pub const fn wrapping_sub(self, rhs: $internal) -> Self {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 // Forward to internal type's impl if same as type.
