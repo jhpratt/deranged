@@ -809,7 +809,6 @@ macro_rules! impl_ranged {
                 range_len: $unsigned_type
             ) -> $unsigned_type {
                 #[allow(unused_comparisons)]
-                // equivalent to `rem_euclid_unsigned()` if that method existed
                 if rhs >= 0 {
                     (rhs as $unsigned_type) % range_len
                 } else {
