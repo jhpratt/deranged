@@ -43,6 +43,7 @@
 #[cfg(test)]
 mod tests;
 mod traits;
+mod unsafe_wrapper;
 
 #[cfg(feature = "alloc")]
 #[allow(unused_extern_crates)]
@@ -58,6 +59,8 @@ use std::error::Error;
 
 #[cfg(feature = "powerfmt")]
 use powerfmt::smart_display;
+
+use crate::unsafe_wrapper::Unsafe;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TryFromIntError;
@@ -162,159 +165,122 @@ macro_rules! impl_ranged {
             optional: $optional_type:ident
         }
     )*) => {$(
-        pub use $mod_name::{$type, $optional_type};
+        #[doc = concat!(
+            article!($is_signed),
+            " `",
+            stringify!($internal),
+            "` that is known to be in the range `MIN..=MAX`.",
+        )]
+        #[repr(transparent)]
+        #[derive(Clone, Copy, Eq, Ord, Hash)]
+        pub struct $type<const MIN: $internal, const MAX: $internal>(
+            Unsafe<$internal>,
+        );
 
-        // Introduce the type in a module. This ensures that all accesses and mutations of the field
-        // have the necessary checks.
-        mod $mod_name {
-            #[doc = concat!(
-                article!($is_signed),
-                " `",
-                stringify!($internal),
-                "` that is known to be in the range `MIN..=MAX`.",
-            )]
-            #[repr(transparent)]
-            #[derive(Clone, Copy, Eq, Ord, Hash)]
-            pub struct $type<const MIN: $internal, const MAX: $internal>(
-                $internal,
-            );
-
-            #[doc = concat!(
-                "A `",
-                stringify!($type),
-                "` that is optional. Equivalent to [`Option<",
-                stringify!($type),
-                ">`] with niche value optimization.",
-            )]
-            ///
-            #[doc = concat!(
-                "If `MIN` is [`",
-                stringify!($internal),
-                "::MIN`] _and_ `MAX` is [`",
-                stringify!($internal)
-                ,"::MAX`] then compilation will fail. This is because there is no way to represent \
-                the niche value.",
-            )]
-            ///
-            /// This type is useful when you need to store an optional ranged value in a struct, but
-            /// do not want the overhead of an `Option` type. This reduces the size of the struct
-            /// overall, and is particularly useful when you have a large number of optional fields.
-            /// Note that most operations must still be performed on the [`Option`] type, which is
-            #[doc = concat!("obtained with [`", stringify!($optional_type), "::get`].")]
-            #[repr(transparent)]
-            #[derive(Clone, Copy, Eq, Hash)]
-            pub struct $optional_type<const MIN: $internal, const MAX: $internal>(
-                $internal,
-            );
-
-            impl<const MIN: $internal, const MAX: $internal> $type<MIN, MAX> {
-                /// Creates a ranged integer without checking the value.
-                ///
-                /// # Safety
-                ///
-                /// The value must be within the range `MIN..=MAX`.
-                #[inline(always)]
-                pub const unsafe fn new_unchecked(value: $internal) -> Self {
-                    <Self as $crate::traits::RangeIsValid>::ASSERT;
-                    // Safety: The caller must ensure that the value is in range.
-                    unsafe { $crate::assume(MIN <= value && value <= MAX) };
-                    Self(value)
-                }
-
-                /// Creates a ranged integer if the given value is in the range
-                /// `MIN..=MAX`.
-                #[inline(always)]
-                pub const fn new(value: $internal) -> Option<Self> {
-                    <Self as $crate::traits::RangeIsValid>::ASSERT;
-                    if value < MIN || value > MAX {
-                        None
-                    } else {
-                        Some(Self(value))
-                    }
-                }
-
-                /// Returns the value as a primitive type.
-                #[inline(always)]
-                pub const fn get(self) -> $internal {
-                    <Self as $crate::traits::RangeIsValid>::ASSERT;
-                    // Safety: A stored value is always in range.
-                    unsafe { $crate::assume(MIN <= self.0 && self.0 <= MAX) };
-                    self.0
-                }
-
-                #[inline(always)]
-                pub(crate) const fn get_ref(&self) -> &$internal {
-                    <Self as $crate::traits::RangeIsValid>::ASSERT;
-                    // Safety: A stored value is always in range.
-                    unsafe { $crate::assume(MIN <= self.0 && self.0 <= MAX) };
-                    &self.0
-                }
-            }
-
-            impl<const MIN: $internal, const MAX: $internal> $optional_type<MIN, MAX> {
-                /// The value used as the niche. Must not be in the range `MIN..=MAX`.
-                const NICHE: $internal = match (MIN, MAX) {
-                    ($internal::MIN, $internal::MAX) => panic!("type has no niche"),
-                    ($internal::MIN, _) => $internal::MAX,
-                    (_, _) => $internal::MIN,
-                };
-
-                /// An optional ranged value that is not present.
-                #[allow(non_upper_case_globals)]
-                pub const None: Self = Self(Self::NICHE);
-
-                /// Creates an optional ranged value that is present.
-                #[allow(non_snake_case)]
-                #[inline(always)]
-                pub const fn Some(value: $type<MIN, MAX>) -> Self {
-                    <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
-                    Self(value.get())
-                }
-
-                /// Returns the value as the standard library's [`Option`] type.
-                #[inline(always)]
-                pub const fn get(self) -> Option<$type<MIN, MAX>> {
-                    <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
-                    if self.0 == Self::NICHE {
-                        None
-                    } else {
-                        // Safety: A stored value that is not the niche is always in range.
-                        Some(unsafe { $type::new_unchecked(self.0) })
-                    }
-                }
-
-                /// Creates an optional ranged integer without checking the value.
-                ///
-                /// # Safety
-                ///
-                /// The value must be within the range `MIN..=MAX`. As the value used for niche
-                /// value optimization is unspecified, the provided value must not be the niche
-                /// value.
-                #[inline(always)]
-                pub const unsafe fn some_unchecked(value: $internal) -> Self {
-                    <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
-                    // Safety: The caller must ensure that the value is in range.
-                    unsafe { $crate::assume(MIN <= value && value <= MAX) };
-                    Self(value)
-                }
-
-                /// Obtain the inner value of the struct. This is useful for comparisons.
-                #[inline(always)]
-                pub(crate) const fn inner(self) -> $internal {
-                    <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
-                    self.0
-                }
-            }
-        }
+        #[doc = concat!(
+            "A `",
+            stringify!($type),
+            "` that is optional. Equivalent to [`Option<",
+            stringify!($type),
+            ">`] with niche value optimization.",
+        )]
+        ///
+        #[doc = concat!(
+            "If `MIN` is [`",
+            stringify!($internal),
+            "::MIN`] _and_ `MAX` is [`",
+            stringify!($internal)
+            ,"::MAX`] then compilation will fail. This is because there is no way to represent \
+            the niche value.",
+        )]
+        ///
+        /// This type is useful when you need to store an optional ranged value in a struct, but
+        /// do not want the overhead of an `Option` type. This reduces the size of the struct
+        /// overall, and is particularly useful when you have a large number of optional fields.
+        /// Note that most operations must still be performed on the [`Option`] type, which is
+        #[doc = concat!("obtained with [`", stringify!($optional_type), "::get`].")]
+        #[repr(transparent)]
+        #[derive(Clone, Copy, Eq, Hash)]
+        pub struct $optional_type<const MIN: $internal, const MAX: $internal>(
+            $internal,
+        );
 
         impl<const MIN: $internal, const MAX: $internal> $type<MIN, MAX> {
             /// The smallest value that can be represented by this type.
             // Safety: `MIN` is in range by definition.
-            pub const MIN: Self = unsafe { Self::new_unchecked(MIN) };
+            pub const MIN: Self = Self::new_static::<MIN>();
 
             /// The largest value that can be represented by this type.
             // Safety: `MAX` is in range by definition.
-            pub const MAX: Self = unsafe { Self::new_unchecked(MAX) };
+            pub const MAX: Self = Self::new_static::<MAX>();
+
+            /// Creates a ranged integer without checking the value.
+            ///
+            /// # Safety
+            ///
+            /// The value must be within the range `MIN..=MAX`.
+            #[inline(always)]
+            pub const unsafe fn new_unchecked(value: $internal) -> Self {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                // Safety: The caller must ensure that the value is in range.
+                unsafe {
+                    $crate::assume(MIN <= value && value <= MAX);
+                    Self(Unsafe::new(value))
+                }
+            }
+
+            /// Returns the value as a primitive type.
+            #[inline(always)]
+            pub const fn get(self) -> $internal {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                // Safety: A stored value is always in range.
+                unsafe { $crate::assume(MIN <= *self.0.get() && *self.0.get() <= MAX) };
+                *self.0.get()
+            }
+
+            #[inline(always)]
+            pub(crate) const fn get_ref(&self) -> &$internal {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                let value = self.0.get();
+                // Safety: A stored value is always in range.
+                unsafe { $crate::assume(MIN <= *value && *value <= MAX) };
+                value
+            }
+
+            /// Creates a ranged integer if the given value is in the range `MIN..=MAX`.
+            #[inline(always)]
+            pub const fn new(value: $internal) -> Option<Self> {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                if value < MIN || value > MAX {
+                    None
+                } else {
+                    // Safety: The value is in range.
+                    Some(unsafe { Self::new_unchecked(value) })
+                }
+            }
+
+            /// Creates a ranged integer with a statically known value. **Fails to compile** if the
+            /// value is not in range.
+            #[inline(always)]
+            pub const fn new_static<const VALUE: $internal>() -> Self {
+                <($type<MIN, VALUE>, $type<VALUE, MAX>) as $crate::traits::StaticIsValid>::ASSERT;
+                // Safety: The value is in range.
+                unsafe { Self::new_unchecked(VALUE) }
+            }
+
+            /// Creates a ranged integer with the given value, saturating if it is out of range.
+            #[inline]
+            pub const fn new_saturating(value: $internal) -> Self {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                if value < MIN {
+                    Self::MIN
+                } else if value > MAX {
+                    Self::MAX
+                } else {
+                    // Safety: The value is in range.
+                    unsafe { Self::new_unchecked(value) }
+                }
+            }
 
             /// Expand the range that the value may be in. **Fails to compile** if the new range is
             /// not a superset of the current range.
@@ -342,32 +308,6 @@ macro_rules! impl_ranged {
                     ::ASSERT;
                 $type::<NEW_MIN, NEW_MAX>::new(self.get())
             }
-
-
-            /// Creates a ranged integer with a statically known value. **Fails to compile** if the
-            /// value is not in range.
-            #[inline(always)]
-            pub const fn new_static<const VALUE: $internal>() -> Self {
-                <($type<MIN, VALUE>, $type<VALUE, MAX>) as $crate::traits::StaticIsValid>::ASSERT;
-                // Safety: The value is in range.
-                unsafe { Self::new_unchecked(VALUE) }
-            }
-
-            #[inline]
-            const fn new_saturating(value: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
-                // Safety: The value is clamped to the range.
-                unsafe {
-                    Self::new_unchecked(if value < MIN {
-                        MIN
-                    } else if value > MAX {
-                        MAX
-                    } else {
-                        value
-                    })
-                }
-            }
-
 
             /// Converts a string slice in a given base to an integer.
             ///
@@ -928,6 +868,59 @@ macro_rules! impl_ranged {
         }
 
         impl<const MIN: $internal, const MAX: $internal> $optional_type<MIN, MAX> {
+            /// The value used as the niche. Must not be in the range `MIN..=MAX`.
+            const NICHE: $internal = match (MIN, MAX) {
+                ($internal::MIN, $internal::MAX) => panic!("type has no niche"),
+                ($internal::MIN, _) => $internal::MAX,
+                (_, _) => $internal::MIN,
+            };
+
+            /// An optional ranged value that is not present.
+            #[allow(non_upper_case_globals)]
+            pub const None: Self = Self(Self::NICHE);
+
+            /// Creates an optional ranged value that is present.
+            #[allow(non_snake_case)]
+            #[inline(always)]
+            pub const fn Some(value: $type<MIN, MAX>) -> Self {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                Self(value.get())
+            }
+
+            /// Returns the value as the standard library's [`Option`] type.
+            #[inline(always)]
+            pub const fn get(self) -> Option<$type<MIN, MAX>> {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                if self.0 == Self::NICHE {
+                    None
+                } else {
+                    // Safety: A stored value that is not the niche is always in range.
+                    Some(unsafe { $type::new_unchecked(self.0) })
+                }
+            }
+
+            /// Creates an optional ranged integer without checking the value.
+            ///
+            /// # Safety
+            ///
+            /// The value must be within the range `MIN..=MAX`. As the value used for niche
+            /// value optimization is unspecified, the provided value must not be the niche
+            /// value.
+            #[inline(always)]
+            pub const unsafe fn some_unchecked(value: $internal) -> Self {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                // Safety: The caller must ensure that the value is in range.
+                unsafe { $crate::assume(MIN <= value && value <= MAX) };
+                Self(value)
+            }
+
+            /// Obtain the inner value of the struct. This is useful for comparisons.
+            #[inline(always)]
+            pub(crate) const fn inner(self) -> $internal {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                self.0
+            }
+
             #[inline(always)]
             pub const fn get_primitive(self) -> Option<$internal> {
                 <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
