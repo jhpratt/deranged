@@ -737,7 +737,7 @@ macro_rules! impl_ranged {
                 Self::new_saturating(self.get().saturating_pow(exp))
             }
 
-            /// Compute the rem_euclid of this type with its unsigned type equivalent
+            /// Compute the `rem_euclid` of this type with its unsigned type equivalent
             // Not public because it doesn't match stdlib's "method_unsigned implemented only for signed type" tradition.
             // Also because this isn't implemented for normal types in std.
             // TODO maybe make public anyway? It is useful.
