@@ -805,7 +805,7 @@ macro_rules! impl_ranged {
                 else {
                     // Safety:
                     // - offset < range_len by rem_euclid (MIN + ... safe)
-                    // - offset > greater_values from if statement (offset - (greater_values + 1) safe)
+                    // - offset > greater_vals from if statement (offset - (greater_vals + 1) safe)
                     //
                     // again using `(signed as unsigned).wrapping_add(unsigned) as signed` = `checked_add_unsigned` trick
                     unsafe { Self::new_unchecked(
@@ -854,8 +854,8 @@ macro_rules! impl_ranged {
                 // Wrap
                 else {
                     // Safety:
-                    // - offset < range_len by rem_euclid (MIN + ... safe)
-                    // - offset > greater_values from if statement (offset - (greater_values + 1) safe)
+                    // - offset < range_len by rem_euclid (MAX - ... safe)
+                    // - offset > lesser_vals from if statement (offset - (lesser_vals + 1) safe)
                     //
                     // again using `(signed as unsigned).wrapping_sub(unsigned) as signed` = `checked_sub_unsigned` trick
                     unsafe { Self::new_unchecked(
