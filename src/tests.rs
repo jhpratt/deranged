@@ -393,8 +393,10 @@ macro_rules! tests {
                 assert_eq!($t::<{ $inner::MIN }, { $inner::MAX }>::MAX.wrapping_add(1),
                            $t::<{ $inner::MIN }, { $inner::MAX }>::MIN);
                 for i in 1..127 {
-                    assert_eq!($t::<{ $inner::MIN}, { $inner::MAX - 1 }>::MAX.wrapping_add(i),
-                            $t::<{ $inner::MIN}, { $inner::MAX - 1 }>::new($inner::MIN + i - 1).unwrap_or_else(|| panic!("adding {i}+{} does not yield {}", $inner::MIN, $inner::MAX + i )));
+                    assert_eq!(
+                        $t::<{ $inner::MIN}, { $inner::MAX - 1 }>::MAX.wrapping_add(i),
+                        $t::<{ $inner::MIN}, { $inner::MAX - 1 }>::new($inner::MIN + i - 1).unwrap_or_else(|| panic!("adding {i}+{} does not yield {}", $inner::MIN, $inner::MAX + i ))
+                    );
                 }
             )*
             $(if_signed! { $signed
@@ -420,6 +422,38 @@ macro_rules! tests {
                 assert_eq!($t::<-127, 126>::MIN.wrapping_add(-1), $t::<-127, 126>::MAX);
                 assert_eq!($t::<{ $inner::MIN }, { $inner::MAX }>::MIN.wrapping_add(-1),
                            $t::<{ $inner::MIN }, { $inner::MAX }>::MAX);
+            })*
+        }
+
+        #[test]
+        fn wrapping_sub() {
+            $(
+                assert_eq!($t::<5, 10>::MIN.wrapping_sub(0), $t::<5, 10>::MIN);
+                assert_eq!($t::<5, 10>::MIN.wrapping_sub(1), $t::<5, 10>::MAX);
+                assert_eq!($t::<5, 10>::new(5 + 1).unwrap().wrapping_sub(1), $t::<5, 10>::MIN);
+                assert_eq!($t::<5, 10>::MAX.wrapping_sub(1), $t::<5, 10>::new(10 - 1).unwrap());
+                assert_eq!($t::<{ $inner::MIN }, { $inner::MAX }>::MIN.wrapping_sub(1),
+                           $t::<{ $inner::MIN }, { $inner::MAX }>::MAX);
+                for i in 1..127 {
+                    assert_eq!(
+                        $t::<{ $inner::MIN + 1 }, { $inner::MAX }>::MIN.wrapping_sub(i),
+                        $t::<{ $inner::MIN + 1 }, { $inner::MAX }>::new($inner::MAX - i + 1).unwrap_or_else(|| panic!("failed test at iteration {i}"))
+                    );
+                }
+            )*
+            $(if_signed! { $signed
+                for i in -127..=127 {
+                    assert_eq!($t::<-5, 126>::MIN.wrapping_add(i), $t::<-5,126>::MIN.wrapping_sub(-i), "failed test at {i}");
+                    assert_eq!($t::<-5, 126>::MIN.wrapping_add(-i), $t::<-5,126>::MIN.wrapping_sub(i), "failed test at {i}");
+                }
+                assert_eq!(
+                    $t::<-5, 126>::MIN.wrapping_add(127).wrapping_add(1),
+                    $t::<-5,126>::MIN.wrapping_sub(-128)
+                );
+                assert_eq!(
+                    $t::<-5, 126>::MIN.wrapping_add(-128),
+                    $t::<-5,126>::MIN.wrapping_sub(127).wrapping_sub(1)
+                );
             })*
         }
 
