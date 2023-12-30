@@ -9,8 +9,13 @@ use crate::{
 };
 
 macro_rules! if_signed {
-    (signed $($x:tt)*) => { $($x)*};
+    (signed $($x:tt)*) => { $($x)* };
     (unsigned $($x:tt)*) => {};
+}
+
+macro_rules! if_unsigned {
+    (signed $($x:tt)*) => {};
+    (unsigned $($x:tt)*) => { $($x)* };
 }
 
 #[test]
@@ -263,6 +268,12 @@ macro_rules! tests {
                 assert_eq!($t::<5, 10>::MAX.unchecked_div_euclid(1), $t::<5, 10>::MAX);
             }
         )*}
+
+        #[test]
+        fn rem() {$(if_unsigned! { $signed
+            assert_eq!($t::<5, 10>::MAX.rem($t::exact::<3>()), $t::<0, 3>::new_static::<1>());
+            assert_eq!($t::<5, 10>::MAX.rem($t::exact::<5>()), $t::<0, 5>::MIN);
+        })*}
 
         #[test]
         fn checked_rem() {$(

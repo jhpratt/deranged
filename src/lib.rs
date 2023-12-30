@@ -120,6 +120,11 @@ macro_rules! if_signed {
     (false $($x:tt)*) => {};
 }
 
+macro_rules! if_unsigned {
+    (true $($x:tt)*) => {};
+    (false $($x:tt)*) => { $($x)* };
+}
+
 macro_rules! article {
     (true) => {
         "An"
@@ -204,6 +209,14 @@ macro_rules! impl_ranged {
         pub struct $optional_type<const MIN: $internal, const MAX: $internal>(
             $internal,
         );
+
+        impl $type<0, 0> {
+            #[inline(always)]
+            pub const fn exact<const VALUE: $internal>() -> $type<VALUE, VALUE> {
+                // Safety: The value is the only one in range.
+                unsafe { $type::new_unchecked(VALUE) }
+            }
+        }
 
         impl<const MIN: $internal, const MAX: $internal> $type<MIN, MAX> {
             /// The smallest value that can be represented by this type.
@@ -485,6 +498,21 @@ macro_rules! impl_ranged {
                 }
             }
 
+            if_unsigned!($is_signed
+            /// Remainder. Computes `self % rhs`, statically guaranteeing that the returned value
+            /// is in range.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[inline]
+            pub const fn rem<const RHS_VALUE: $internal>(
+                self,
+                rhs: $type<RHS_VALUE, RHS_VALUE>,
+            ) -> $type<0, RHS_VALUE> {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                // Safety: The result is guaranteed to be in range due to the nature of remainder on
+                // unsigned integers.
+                unsafe { $type::new_unchecked(self.get() % rhs.get()) }
+            });
+
             /// Checked integer remainder. Computes `self % rhs`, returning `None` if `rhs == 0` or
             /// if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
@@ -563,7 +591,7 @@ macro_rules! impl_ranged {
                 unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_neg())) }
             }
 
-            /// Absolute value. Computes `self.neg()`, **failing to compile** if the result is not
+            /// Negation. Computes `self.neg()`, **failing to compile** if the result is not
             /// guaranteed to be in range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
