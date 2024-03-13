@@ -1,0 +1,16 @@
+[package]
+name = "deranged-macros"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.67.0"
+repository = "https://github.com/jhpratt/deranged"
+keywords = ["integer", "int", "range"]
+readme = "../README.md"
+license = "MIT OR Apache-2.0"
+description = "Ranged integers"
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]

@@ -1,4 +1,4 @@
-use std::hash::Hash;
+use core::hash::Hash;
 
 use crate::{
     IntErrorKind, OptionRangedI128, OptionRangedI16, OptionRangedI32, OptionRangedI64,
@@ -98,7 +98,7 @@ macro_rules! tests {
             $t::<5, 10>::MIN.hash(&mut hasher);
             assert_eq!(
                 $t::<5, 10>::MIN.cmp(&$t::<5, 10>::MAX),
-                std::cmp::Ordering::Less
+                core::cmp::Ordering::Less
             );
 
             assert_eq!($opt::<5, 10>::None.clone(), $opt::<5, 10>::None);
@@ -514,7 +514,7 @@ macro_rules! tests {
 
         #[test]
         fn borrow() {
-            use std::borrow::Borrow;
+            use core::borrow::Borrow;
             $(
             assert_eq!(Borrow::<$inner>::borrow(&$t::<5, 10>::MIN), &5);
             assert_eq!(Borrow::<$inner>::borrow(&$t::<5, 10>::MAX), &10);
@@ -548,23 +548,23 @@ macro_rules! tests {
             let five = $opt::Some($t::<5, 10>::MIN);
             let ten = $opt::Some($t::<5, 10>::MAX);
 
-            assert_eq!(none.cmp(&none), std::cmp::Ordering::Equal);
-            assert_eq!(five.cmp(&five), std::cmp::Ordering::Equal);
-            assert_eq!(ten.cmp(&ten), std::cmp::Ordering::Equal);
-            assert_eq!(none.cmp(&five), std::cmp::Ordering::Less);
-            assert_eq!(five.cmp(&ten), std::cmp::Ordering::Less);
-            assert_eq!(none.cmp(&ten), std::cmp::Ordering::Less);
-            assert_eq!(ten.cmp(&none), std::cmp::Ordering::Greater);
+            assert_eq!(none.cmp(&none), core::cmp::Ordering::Equal);
+            assert_eq!(five.cmp(&five), core::cmp::Ordering::Equal);
+            assert_eq!(ten.cmp(&ten), core::cmp::Ordering::Equal);
+            assert_eq!(none.cmp(&five), core::cmp::Ordering::Less);
+            assert_eq!(five.cmp(&ten), core::cmp::Ordering::Less);
+            assert_eq!(none.cmp(&ten), core::cmp::Ordering::Less);
+            assert_eq!(ten.cmp(&none), core::cmp::Ordering::Greater);
 
             let none = $opt::<0, 10>::None;
             let zero = $opt::Some($t::<0, 10>::MIN);
             let ten = $opt::Some($t::<0, 10>::MAX);
 
-            assert_eq!(none.partial_cmp(&none), Some(std::cmp::Ordering::Equal));
-            assert_eq!(none.partial_cmp(&zero), Some(std::cmp::Ordering::Less));
-            assert_eq!(zero.partial_cmp(&ten), Some(std::cmp::Ordering::Less));
-            assert_eq!(none.partial_cmp(&ten), Some(std::cmp::Ordering::Less));
-            assert_eq!(ten.partial_cmp(&none), Some(std::cmp::Ordering::Greater));
+            assert_eq!(none.partial_cmp(&none), Some(core::cmp::Ordering::Equal));
+            assert_eq!(none.partial_cmp(&zero), Some(core::cmp::Ordering::Less));
+            assert_eq!(zero.partial_cmp(&ten), Some(core::cmp::Ordering::Less));
+            assert_eq!(none.partial_cmp(&ten), Some(core::cmp::Ordering::Less));
+            assert_eq!(ten.partial_cmp(&none), Some(core::cmp::Ordering::Greater));
         )*}
 
         #[test]

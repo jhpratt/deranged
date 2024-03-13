@@ -1,43 +1,7 @@
+//! `deranged` is a proof-of-concept implementation of ranged integers.
+
 #![cfg_attr(docs_rs, feature(doc_auto_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![deny(
-    anonymous_parameters,
-    clippy::all,
-    clippy::missing_safety_doc,
-    clippy::missing_safety_doc,
-    clippy::undocumented_unsafe_blocks,
-    illegal_floating_point_literal_pattern,
-    late_bound_lifetime_arguments,
-    patterns_in_fns_without_body,
-    rust_2018_idioms,
-    trivial_casts,
-    trivial_numeric_casts,
-    unreachable_pub,
-    unsafe_op_in_unsafe_fn,
-    unused_extern_crates
-)]
-#![warn(
-    clippy::dbg_macro,
-    clippy::decimal_literal_representation,
-    clippy::get_unwrap,
-    clippy::nursery,
-    clippy::pedantic,
-    clippy::todo,
-    clippy::unimplemented,
-    clippy::unwrap_used,
-    clippy::use_debug,
-    missing_copy_implementations,
-    missing_debug_implementations,
-    unused_qualifications,
-    variant_size_differences
-)]
-#![allow(
-    path_statements, // used for static assertions
-    clippy::inline_always,
-    clippy::missing_errors_doc,
-    clippy::must_use_candidate,
-    clippy::redundant_pub_crate,
-)]
 #![doc(test(attr(deny(warnings))))]
 
 #[cfg(test)]
@@ -62,6 +26,7 @@ use powerfmt::smart_display;
 
 use crate::unsafe_wrapper::Unsafe;
 
+/// The error type returned when a checked integral type conversion fails.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TryFromIntError;
 
@@ -74,8 +39,28 @@ impl fmt::Display for TryFromIntError {
 #[cfg(feature = "std")]
 impl Error for TryFromIntError {}
 
+/// An error which can be returned when parsing an integer.
+///
+/// This error is used as the error type for the `from_str_radix()` functions on ranged integer
+/// types, such as [`RangedI8::from_str_radix`].
+///
+/// # Potential causes
+///
+/// Among other causes, `ParseIntError` can be thrown because of leading or trailing whitespace
+/// in the string e.g., when it is obtained from the standard input.
+/// Using the [`str::trim()`] method ensures that no whitespace remains before parsing.
+///
+/// # Example
+///
+/// ```rust
+/// # use deranged::RangedI32;
+/// if let Err(e) = RangedI32::<0, 10>::from_str_radix("a12", 10) {
+///     println!("Failed conversion to RangedI32: {e}");
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseIntError {
+    #[allow(clippy::missing_docs_in_private_items)]
     kind: IntErrorKind,
 }
 
@@ -107,6 +92,7 @@ impl fmt::Display for ParseIntError {
 #[cfg(feature = "std")]
 impl Error for ParseIntError {}
 
+/// `?` for `Option` types, usable in `const` contexts.
 macro_rules! const_try_opt {
     ($e:expr) => {
         match $e {
@@ -116,16 +102,19 @@ macro_rules! const_try_opt {
     };
 }
 
+/// Output the given tokens if the type is signed, otherwise output nothing.
 macro_rules! if_signed {
     (true $($x:tt)*) => { $($x)*};
     (false $($x:tt)*) => {};
 }
 
+/// Output the given tokens if the type is unsigned, otherwise output nothing.
 macro_rules! if_unsigned {
     (true $($x:tt)*) => {};
     (false $($x:tt)*) => { $($x)* };
 }
 
+/// `"A"` if `true`, `"An"` if `false`.
 macro_rules! article {
     (true) => {
         "An"
@@ -135,6 +124,7 @@ macro_rules! article {
     };
 }
 
+/// `Option::unwrap_unchecked`, but usable in `const` contexts.
 macro_rules! unsafe_unwrap_unchecked {
     ($e:expr) => {{
         let opt = $e;
@@ -161,6 +151,7 @@ const unsafe fn assume(b: bool) {
     }
 }
 
+/// Implement a ranged integer type.
 macro_rules! impl_ranged {
     ($(
         $type:ident {
@@ -212,6 +203,7 @@ macro_rules! impl_ranged {
         );
 
         impl $type<0, 0> {
+            #[doc = concat!("A ", stringify!($type), " that is always `VALUE`.")]
             #[inline(always)]
             pub const fn exact<const VALUE: $internal>() -> $type<VALUE, VALUE> {
                 // Safety: The value is the only one in range.
@@ -951,6 +943,7 @@ macro_rules! impl_ranged {
                 self.0
             }
 
+            /// Obtain the value of the struct as an `Option` of the primitive type.
             #[inline(always)]
             pub const fn get_primitive(self) -> Option<$internal> {
                 <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
