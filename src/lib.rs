@@ -90,6 +90,7 @@ impl ParseIntError {
 }
 
 impl fmt::Display for ParseIntError {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             IntErrorKind::Empty => "cannot parse integer from empty string",
@@ -297,6 +298,7 @@ macro_rules! impl_ranged {
 
             /// Expand the range that the value may be in. **Fails to compile** if the new range is
             /// not a superset of the current range.
+            #[inline(always)]
             pub const fn expand<const NEW_MIN: $internal, const NEW_MAX: $internal>(
                 self,
             ) -> $type<NEW_MIN, NEW_MAX> {
@@ -311,6 +313,7 @@ macro_rules! impl_ranged {
             /// Attempt to narrow the range that the value may be in. Returns `None` if the value
             /// is outside the new range. **Fails to compile** if the new range is not a subset of
             /// the current range.
+            #[inline(always)]
             pub const fn narrow<
                 const NEW_MIN: $internal,
                 const NEW_MAX: $internal,
@@ -768,7 +771,6 @@ macro_rules! impl_ranged {
             /// Compute the `rem_euclid` of this type with its unsigned type equivalent
             // Not public because it doesn't match stdlib's "method_unsigned implemented only for signed type" tradition.
             // Also because this isn't implemented for normal types in std.
-            // TODO maybe make public anyway? It is useful.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             #[allow(trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
