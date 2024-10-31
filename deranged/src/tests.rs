@@ -148,6 +148,18 @@ macro_rules! tests {
         )*}
 
         #[test]
+        fn is_some_by_ref() {$(
+            let value = $opt::<5, 10>::Some($t::<5, 10>::MAX);
+            assert!($opt::is_some(&value));
+        )*}
+
+        #[test]
+        fn is_none_by_ref() {$(
+            let value = $opt::<5, 10>::None;
+            assert!($opt::is_none(&value));
+        )*}
+
+        #[test]
         fn default() {$(
             assert_eq!($opt::<5, 10>::default(), $opt::<5, 10>::None);
         )*}
