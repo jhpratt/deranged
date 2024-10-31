@@ -1001,14 +1001,14 @@ macro_rules! impl_ranged {
 
             /// Returns `true` if the value is the niche value.
             #[inline(always)]
-            pub const fn is_none(self) -> bool {
+            pub const fn is_none(&self) -> bool {
                 <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
                 self.get().is_none()
             }
 
             /// Returns `true` if the value is not the niche value.
             #[inline(always)]
-            pub const fn is_some(self) -> bool {
+            pub const fn is_some(&self) -> bool {
                 <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
                 self.get().is_some()
             }
