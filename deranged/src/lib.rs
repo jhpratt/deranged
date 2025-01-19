@@ -1,17 +1,19 @@
 //! `deranged` is a proof-of-concept implementation of ranged integers.
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 #![doc(test(attr(deny(warnings))))]
+
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[cfg(test)]
 mod tests;
 mod traits;
 mod unsafe_wrapper;
-
-#[cfg(feature = "alloc")]
-#[allow(unused_extern_crates)]
-extern crate alloc;
 
 use core::borrow::Borrow;
 use core::cmp::Ordering;
@@ -1327,8 +1329,8 @@ macro_rules! impl_ranged {
                 let internal = <$internal>::deserialize(deserializer)?;
                 Self::new(internal).ok_or_else(|| <D::Error as serde::de::Error>::invalid_value(
                     serde::de::Unexpected::Other("integer"),
-                    #[cfg(feature = "std")] {
-                        &format!("an integer in the range {}..={}", MIN, MAX).as_ref()
+                    #[cfg(feature = "alloc")] {
+                        &alloc::format!("an integer in the range {}..={}", MIN, MAX).as_ref()
                     },
                     #[cfg(not(feature = "std"))] {
                         &"an integer in the valid range"
