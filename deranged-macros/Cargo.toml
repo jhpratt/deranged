@@ -9,6 +9,9 @@ readme = "../README.md"
 license = "MIT OR Apache-2.0"
 description = "Ranged integers"
 
+[lib]
+proc-macro = true
+
 [lints]
 workspace = true
 

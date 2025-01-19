@@ -18,6 +18,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "deranged"
 version = "0.3.11"
 dependencies = [
+ "deranged-macros",
  "num-traits",
  "powerfmt",
  "quickcheck",

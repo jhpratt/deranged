@@ -1,6 +1,6 @@
 //! `deranged` is a proof-of-concept implementation of ranged integers.
 
-#![cfg_attr(docs_rs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(test(attr(deny(warnings))))]
 
@@ -21,6 +21,54 @@ use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error;
 
+/// A macro to define a ranged integer with an automatically computed inner type.
+///
+/// The minimum and maximum values are provided as integer literals, and the macro will compute an
+/// appropriate inner type to represent the range. This will be the smallest integer type that can
+/// store both the minimum and maximum values, with a preference for unsigned types if both are
+/// possible. To specifically request a signed or unsigned type, you can append a `i` or `u` suffix
+/// to either or both of the minimum and maximum values, respectively.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// int!(0, 100);  // RangedU8<0, 100>
+/// int!(0i, 100); // RangedI8<0, 100>
+/// int!(-5, 5);   // RangedI8<-5, 5>
+/// int!(-5u, 5);  // compile error (-5 cannot be unsigned)
+/// ```
+#[cfg(all(doc, feature = "macros"))]
+#[macro_export]
+macro_rules! int {
+    ($min:literal, $max:literal) => {};
+}
+
+/// A macro to define an optional ranged integer with an automatically computed inner type.
+///
+/// The minimum and maximum values are provided as integer literals, and the macro will compute an
+/// appropriate inner type to represent the range. This will be the smallest integer type that can
+/// store both the minimum and maximum values, with a preference for unsigned types if both are
+/// possible. To specifically request a signed or unsigned type, you can append a `i` or `u` suffix
+/// to either or both of the minimum and maximum values, respectively.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// opt_int!(0, 100);  // OptionRangedU8<0, 100>
+/// opt_int!(0i, 100); // OptionRangedI8<0, 100>
+/// opt_int!(-5, 5);   // OptionRangedI8<-5, 5>
+/// opt_int!(-5u, 5);  // compile error (-5 cannot be unsigned)
+/// ```
+#[cfg(all(doc, feature = "macros"))]
+#[macro_export]
+macro_rules! opt_int {
+    ($min:literal, $max:literal) => {};
+}
+
+#[cfg(all(not(doc), feature = "macros"))]
+pub use deranged_macros::int;
+#[cfg(all(not(doc), feature = "macros"))]
+pub use deranged_macros::opt_int;
 #[cfg(feature = "powerfmt")]
 use powerfmt::smart_display;
 
@@ -142,8 +190,9 @@ macro_rules! unsafe_unwrap_unchecked {
 /// # Safety
 ///
 /// `b` must be `true`.
+// TODO remove in favor of `core::hint::assert_unchecked` when MSRV is ≥1.81
 #[inline]
-const unsafe fn assume(b: bool) {
+const unsafe fn assert_unchecked(b: bool) {
     debug_assert!(b);
     if !b {
         // Safety: The caller must ensure that `b` is true.
@@ -175,11 +224,11 @@ macro_rules! impl_ranged {
         );
 
         #[doc = concat!(
-            "A `",
+            "An optional `",
             stringify!($type),
-            "` that is optional. Equivalent to [`Option<",
+            "`; similar to `Option<",
             stringify!($type),
-            ">`] with niche value optimization.",
+            ">` with better optimization.",
         )]
         ///
         #[doc = concat!(
@@ -230,7 +279,7 @@ macro_rules! impl_ranged {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 // Safety: The caller must ensure that the value is in range.
                 unsafe {
-                    $crate::assume(MIN <= value && value <= MAX);
+                    $crate::assert_unchecked(MIN <= value && value <= MAX);
                     Self(Unsafe::new(value))
                 }
             }
@@ -240,7 +289,7 @@ macro_rules! impl_ranged {
             pub const fn get(self) -> $internal {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 // Safety: A stored value is always in range.
-                unsafe { $crate::assume(MIN <= *self.0.get() && *self.0.get() <= MAX) };
+                unsafe { $crate::assert_unchecked(MIN <= *self.0.get() && *self.0.get() <= MAX) };
                 *self.0.get()
             }
 
@@ -249,7 +298,7 @@ macro_rules! impl_ranged {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 let value = self.0.get();
                 // Safety: A stored value is always in range.
-                unsafe { $crate::assume(MIN <= *value && *value <= MAX) };
+                unsafe { $crate::assert_unchecked(MIN <= *value && *value <= MAX) };
                 value
             }
 
@@ -932,7 +981,7 @@ macro_rules! impl_ranged {
             pub const unsafe fn some_unchecked(value: $internal) -> Self {
                 <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
                 // Safety: The caller must ensure that the value is in range.
-                unsafe { $crate::assume(MIN <= value && value <= MAX) };
+                unsafe { $crate::assert_unchecked(MIN <= value && value <= MAX) };
                 Self(value)
             }
 
@@ -1322,7 +1371,7 @@ macro_rules! impl_ranged {
             #[inline]
             fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> $optional_type<MIN, MAX> {
                 <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
-                rng.gen::<Option<$type<MIN, MAX>>>().into()
+                rng.r#gen::<Option<$type<MIN, MAX>>>().into()
             }
         }
 
