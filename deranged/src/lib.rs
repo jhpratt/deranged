@@ -37,7 +37,7 @@ use std::error::Error;
 /// int!(-5, 5);   // RangedI8<-5, 5>
 /// int!(-5u, 5);  // compile error (-5 cannot be unsigned)
 /// ```
-#[cfg(all(doc, feature = "macros"))]
+#[cfg(all(docsrs, feature = "macros"))]
 #[macro_export]
 macro_rules! int {
     ($min:literal, $max:literal) => {};
@@ -59,15 +59,15 @@ macro_rules! int {
 /// opt_int!(-5, 5);   // OptionRangedI8<-5, 5>
 /// opt_int!(-5u, 5);  // compile error (-5 cannot be unsigned)
 /// ```
-#[cfg(all(doc, feature = "macros"))]
+#[cfg(all(docsrs, feature = "macros"))]
 #[macro_export]
 macro_rules! opt_int {
     ($min:literal, $max:literal) => {};
 }
 
-#[cfg(all(not(doc), feature = "macros"))]
+#[cfg(all(not(docsrs), feature = "macros"))]
 pub use deranged_macros::int;
-#[cfg(all(not(doc), feature = "macros"))]
+#[cfg(all(not(docsrs), feature = "macros"))]
 pub use deranged_macros::opt_int;
 #[cfg(feature = "powerfmt")]
 use powerfmt::smart_display;
