@@ -645,14 +645,28 @@ macro_rules! tests {
             Ok(())
         }
 
-        #[cfg(feature = "rand")]
+        #[cfg(feature = "rand08")]
         #[test]
-        fn rand() {$(
-            let rand_val: $t<5, 10> = rand::random();
+        fn rand08() {$(
+            let rand_val: $t<5, 10> = rand08::random();
             assert!(rand_val >= $t::<5, 10>::MIN);
             assert!(rand_val <= $t::<5, 10>::MAX);
 
-            let rand: $opt<5, 10> = rand::random();
+            let rand: $opt<5, 10> = rand08::random();
+            if let Some(rand) = rand.get() {
+                assert!(rand >= $t::<5, 10>::MIN);
+                assert!(rand <= $t::<5, 10>::MAX);
+            }
+        )*}
+
+        #[cfg(feature = "rand09")]
+        #[test]
+        fn rand09() {$(
+            let rand_val: $t<5, 10> = rand09::random();
+            assert!(rand_val >= $t::<5, 10>::MIN);
+            assert!(rand_val <= $t::<5, 10>::MAX);
+
+            let rand: $opt<5, 10> = rand09::random();
             if let Some(rand) = rand.get() {
                 assert!(rand >= $t::<5, 10>::MIN);
                 assert!(rand <= $t::<5, 10>::MAX);

@@ -18,7 +18,9 @@ macros = ["dep:deranged-macros"]
 num = ["dep:num-traits"]
 powerfmt = ["dep:powerfmt"]
 quickcheck = ["dep:quickcheck", "alloc"]
-rand = ["dep:rand"]
+rand = ["rand08", "rand09"]
+rand08 = ["dep:rand08"]
+rand09 = ["dep:rand09"]
 serde = ["dep:serde"]
 std = ["alloc"]
 
@@ -35,9 +37,11 @@ deranged-macros = { workspace = true, optional = true }
 num-traits = { version = "0.2.15", optional = true, default-features = false }
 powerfmt = { version = "0.2.0", optional = true, default-features = false }
 quickcheck = { version = "1.0.3", default-features = false, optional = true }
-rand = { version = "0.8.4", optional = true, default-features = false }
+rand08 = { package = "rand", version = "0.8.4", optional = true, default-features = false }
+rand09 = { package = "rand", version = "0.9.0", optional = true, default-features = false }
 serde = { version = "1.0.126", optional = true, default-features = false }
 
 [dev-dependencies]
-rand = "0.8.4"
+rand08 = { package = "rand", version = "0.8.4" }
+rand09 = { package = "rand", version = "0.9.0" }
 serde_json = "1.0.86"

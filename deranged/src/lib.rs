@@ -202,6 +202,18 @@ const unsafe fn assert_unchecked(b: bool) {
     }
 }
 
+/// Output the provided code if and only if the list does not include `rand_09`.
+#[allow(unused_macro_rules)]
+macro_rules! if_not_manual_rand_09 {
+    ([rand_09 $($rest:ident)*] $($output:tt)*) => {};
+    ([] $($output:tt)*) => {
+        $($output)*
+    };
+    ([$first:ident $($rest:ident)*] $($output:tt)*) => {
+        if_not_manual_rand_09!([$($rest)*] $($output)*);
+    };
+}
+
 /// Implement a ranged integer type.
 macro_rules! impl_ranged {
     ($(
@@ -211,6 +223,7 @@ macro_rules! impl_ranged {
             signed: $is_signed:ident
             unsigned: $unsigned_type:ident
             optional: $optional_type:ident
+            $(manual: [$($skips:ident)+])?
         }
     )*) => {$(
         #[doc = concat!(
@@ -1352,28 +1365,60 @@ macro_rules! impl_ranged {
             }
         }
 
-        #[cfg(feature = "rand")]
+        #[cfg(feature = "rand08")]
         impl<
             const MIN: $internal,
             const MAX: $internal,
-        > rand::distributions::Distribution<$type<MIN, MAX>> for rand::distributions::Standard {
+        > rand08::distributions::Distribution<$type<MIN, MAX>> for rand08::distributions::Standard {
             #[inline]
-            fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
+            fn sample<R: rand08::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
                 <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
                 $type::new(rng.gen_range(MIN..=MAX)).expect("rand failed to generate a valid value")
             }
         }
 
-        #[cfg(feature = "rand")]
+        if_not_manual_rand_09! {
+            [$($($skips)+)?]
+            #[cfg(feature = "rand09")]
+            impl<
+                const MIN: $internal,
+                const MAX: $internal,
+            > rand09::distr::Distribution<$type<MIN, MAX>> for rand09::distr::StandardUniform {
+                #[inline]
+                fn sample<R: rand09::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
+                    <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                    $type::new(rng.random_range(MIN..=MAX)).expect("rand failed to generate a valid value")
+                }
+            }
+        }
+
+        #[cfg(feature = "rand08")]
         impl<
             const MIN: $internal,
             const MAX: $internal,
-        > rand::distributions::Distribution<$optional_type<MIN, MAX>>
-        for rand::distributions::Standard {
+        > rand08::distributions::Distribution<$optional_type<MIN, MAX>>
+        for rand08::distributions::Standard {
             #[inline]
-            fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> $optional_type<MIN, MAX> {
+            fn sample<R: rand08::Rng + ?Sized>(&self, rng: &mut R) -> $optional_type<MIN, MAX> {
                 <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
                 rng.r#gen::<Option<$type<MIN, MAX>>>().into()
+            }
+        }
+
+        #[cfg(feature = "rand09")]
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > rand09::distr::Distribution<$optional_type<MIN, MAX>>
+        for rand09::distr::StandardUniform {
+            #[inline]
+            fn sample<R: rand09::Rng + ?Sized>(&self, rng: &mut R) -> $optional_type<MIN, MAX> {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                if rng.random() {
+                    $optional_type::None
+                } else {
+                    $optional_type::Some(rng.random::<$type<MIN, MAX>>())
+                }
             }
         }
 
@@ -1474,6 +1519,7 @@ impl_ranged! {
         signed: false
         unsigned: usize
         optional: OptionRangedUsize
+        manual: [rand_09]
     }
     RangedI8 {
         mod_name: ranged_i8
@@ -1516,5 +1562,56 @@ impl_ranged! {
         signed: true
         unsigned: usize
         optional: OptionRangedIsize
+        manual: [rand_09]
+    }
+}
+
+#[cfg(feature = "rand09")]
+impl<const MIN: usize, const MAX: usize> rand09::distr::Distribution<RangedUsize<MIN, MAX>>
+    for rand09::distr::StandardUniform
+{
+    #[inline]
+    fn sample<R: rand09::Rng + ?Sized>(&self, rng: &mut R) -> RangedUsize<MIN, MAX> {
+        <RangedUsize<MIN, MAX> as traits::RangeIsValid>::ASSERT;
+
+        #[cfg(target_pointer_width = "16")]
+        let value = rng.random_range(MIN as u16..=MAX as u16) as usize;
+        #[cfg(target_pointer_width = "32")]
+        let value = rng.random_range(MIN as u32..=MAX as u32) as usize;
+        #[cfg(target_pointer_width = "64")]
+        let value = rng.random_range(MIN as u64..=MAX as u64) as usize;
+        #[cfg(not(any(
+            target_pointer_width = "16",
+            target_pointer_width = "32",
+            target_pointer_width = "64"
+        )))]
+        compile_error("platform has unusual (and unsupported) pointer width");
+
+        RangedUsize::new(value).expect("rand failed to generate a valid value")
+    }
+}
+
+#[cfg(feature = "rand09")]
+impl<const MIN: isize, const MAX: isize> rand09::distr::Distribution<RangedIsize<MIN, MAX>>
+    for rand09::distr::StandardUniform
+{
+    #[inline]
+    fn sample<R: rand09::Rng + ?Sized>(&self, rng: &mut R) -> RangedIsize<MIN, MAX> {
+        <RangedIsize<MIN, MAX> as traits::RangeIsValid>::ASSERT;
+
+        #[cfg(target_pointer_width = "16")]
+        let value = rng.random_range(MIN as i16..=MAX as i16) as isize;
+        #[cfg(target_pointer_width = "32")]
+        let value = rng.random_range(MIN as i32..=MAX as i32) as isize;
+        #[cfg(target_pointer_width = "64")]
+        let value = rng.random_range(MIN as i64..=MAX as i64) as isize;
+        #[cfg(not(any(
+            target_pointer_width = "16",
+            target_pointer_width = "32",
+            target_pointer_width = "64"
+        )))]
+        compile_error("platform has unusual (and unsupported) pointer width");
+
+        RangedIsize::new(value).expect("rand failed to generate a valid value")
     }
 }
