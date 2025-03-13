@@ -7,7 +7,7 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", any(feature = "serde", feature = "quickcheck")))]
 extern crate alloc;
 
 #[cfg(test)]
@@ -1345,7 +1345,7 @@ macro_rules! impl_ranged {
                     #[cfg(feature = "alloc")] {
                         &alloc::format!("an integer in the range {}..={}", MIN, MAX).as_ref()
                     },
-                    #[cfg(not(feature = "std"))] {
+                    #[cfg(not(feature = "alloc"))] {
                         &"an integer in the valid range"
                     }
                 ))
