@@ -1132,6 +1132,72 @@ macro_rules! impl_ranged {
             }
         }
 
+        impl<const MIN: $internal, const MAX: $internal> PartialEq<$internal> for $type<MIN, MAX> {
+            #[inline(always)]
+            fn eq(&self, other: &$internal) -> bool {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                self.get() == *other
+            }
+        }
+
+        impl<const MIN: $internal, const MAX: $internal> PartialEq<$type<MIN, MAX>> for $internal {
+            #[inline(always)]
+            fn eq(&self, other: &$type<MIN, MAX>) -> bool {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                *self == other.get()
+            }
+        }
+
+        impl<
+            const MIN_A: $internal,
+            const MAX_A: $internal,
+            const MIN_B: $internal,
+            const MAX_B: $internal,
+        > PartialEq<Option<$type<MIN_B, MAX_B>>> for $optional_type<MIN_A, MAX_A> {
+            #[inline(always)]
+            fn eq(&self, other: &Option<$type<MIN_B, MAX_B>>) -> bool {
+                <$type<MIN_A, MAX_A> as $crate::traits::RangeIsValid>::ASSERT;
+                <$type<MIN_B, MAX_B> as $crate::traits::RangeIsValid>::ASSERT;
+                self.get().map($type::get) == other.map($type::get)
+            }
+        }
+
+        impl<
+            const MIN_A: $internal,
+            const MAX_A: $internal,
+            const MIN_B: $internal,
+            const MAX_B: $internal,
+        > PartialEq<$optional_type<MIN_B, MAX_B>> for Option<$type<MIN_A, MAX_A>> {
+            #[inline(always)]
+            fn eq(&self, other: &$optional_type<MIN_B, MAX_B>) -> bool {
+                <$type<MIN_A, MAX_A> as $crate::traits::RangeIsValid>::ASSERT;
+                <$type<MIN_B, MAX_B> as $crate::traits::RangeIsValid>::ASSERT;
+                self.map($type::get) == other.get().map($type::get)
+            }
+        }
+
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > PartialEq<Option<$internal>> for $optional_type<MIN, MAX> {
+            #[inline(always)]
+            fn eq(&self, other: &Option<$internal>) -> bool {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                self.get().map($type::get) == *other
+            }
+        }
+
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > PartialEq<$optional_type<MIN, MAX>> for Option<$internal> {
+            #[inline(always)]
+            fn eq(&self, other: &$optional_type<MIN, MAX>) -> bool {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                *self == other.get().map($type::get)
+            }
+        }
+
         impl<
             const MIN_A: $internal,
             const MAX_A: $internal,
@@ -1143,6 +1209,28 @@ macro_rules! impl_ranged {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 <$type<MIN_B, MAX_B> as $crate::traits::RangeIsValid>::ASSERT;
                 self.get().partial_cmp(&other.get())
+            }
+        }
+
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > PartialOrd<$internal> for $type<MIN, MAX> {
+            #[inline]
+            fn partial_cmp(&self, other: &$internal) -> Option<Ordering> {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                self.get().partial_cmp(other)
+            }
+        }
+
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > PartialOrd<$type<MIN, MAX>> for $internal {
+            #[inline]
+            fn partial_cmp(&self, other: &$type<MIN, MAX>) -> Option<Ordering> {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                self.partial_cmp(&other.get())
             }
         }
 
@@ -1165,6 +1253,56 @@ macro_rules! impl_ranged {
                 } else {
                     self.inner().partial_cmp(&other.inner())
                 }
+            }
+        }
+
+        impl<
+            const MIN_A: $internal,
+            const MAX_A: $internal,
+            const MIN_B: $internal,
+            const MAX_B: $internal,
+        > PartialOrd<Option<$type<MIN_A, MAX_A>>> for $optional_type<MIN_B, MAX_B> {
+            #[inline]
+            fn partial_cmp(&self, other: &Option<$type<MIN_A, MAX_A>>) -> Option<Ordering> {
+                <$type<MIN_B, MAX_B> as $crate::traits::RangeIsValid>::ASSERT;
+                <$type<MIN_A, MAX_A> as $crate::traits::RangeIsValid>::ASSERT;
+                self.get().map($type::get).partial_cmp(&other.map($type::get))
+            }
+        }
+
+        impl<
+            const MIN_A: $internal,
+            const MAX_A: $internal,
+            const MIN_B: $internal,
+            const MAX_B: $internal,
+        > PartialOrd<$optional_type<MIN_B, MAX_B>> for Option<$type<MIN_A, MAX_A>> {
+            #[inline]
+            fn partial_cmp(&self, other: &$optional_type<MIN_B, MAX_B>) -> Option<Ordering> {
+                <$type<MIN_A, MAX_A> as $crate::traits::RangeIsValid>::ASSERT;
+                <$type<MIN_B, MAX_B> as $crate::traits::RangeIsValid>::ASSERT;
+                self.map($type::get).partial_cmp(&other.get().map($type::get))
+            }
+        }
+
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > PartialOrd<Option<$internal>> for $optional_type<MIN, MAX> {
+            #[inline]
+            fn partial_cmp(&self, other: &Option<$internal>) -> Option<Ordering> {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                self.get().map($type::get).partial_cmp(other)
+            }
+        }
+
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > PartialOrd<$optional_type<MIN, MAX>> for Option<$internal> {
+            #[inline]
+            fn partial_cmp(&self, other: &$optional_type<MIN, MAX>) -> Option<Ordering> {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                self.partial_cmp(&other.get().map($type::get))
             }
         }
 
