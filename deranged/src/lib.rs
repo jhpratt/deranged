@@ -952,6 +952,28 @@ macro_rules! impl_ranged {
                     ) }
                 }
             }
+
+            /// Convert an array of plain integers into an array of RangedX. Useful for const initialization
+            /// when you have a lookup table with lots of values that are all in range.
+            /// eg
+            /// const CONST_ARRAY : [RangedU8<1,10>;10] = RangedU8<1,10>::from_array([1,2,3,4,5,6,7,8,9,10]).unwrap();
+            ///
+            /// Returns None if any of the values are out of range, so the compile will fail at the unwrap if
+            /// any of the values are out of range.
+            pub const fn from_array<const N: usize>(a: [$internal; N]) -> Option<[Self; N]> {
+                let mut r = [Self::MIN; N];
+                let mut i = 0;
+                while i < N {
+                    if let Some(x) = Self::new(a[i]) {
+                        r[i] = x;
+                    } else {
+                        return None;
+                    }
+
+                    i += 1;
+                }
+                Some(r)
+            }
         }
 
         impl<const MIN: $internal, const MAX: $internal> $optional_type<MIN, MAX> {
