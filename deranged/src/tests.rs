@@ -602,6 +602,25 @@ macro_rules! tests {
         )*}
 
         #[test]
+        fn from_array() {$(
+            {
+                // Create array of 3 elements that's a const
+                const MYARR : [$t::<5, 10>; 3] = $t::<5, 10>::from_array([5,6,10]).unwrap();
+                const EXPECTED_RESULT : [$t::<5,10>;3] = [
+                    $t::<5,10>::new_static::<5>(),
+                    $t::<5,10>::new_static::<6>(),
+                    $t::<5,10>::new_static::<10>()];
+
+                assert_eq!(MYARR, EXPECTED_RESULT);
+            }
+
+            // if any element is out of range, the whole array is None
+            assert_eq!(
+                $t::<5, 10>::from_array([5,6,11]),
+                None);
+        )*}
+
+        #[test]
         fn from_str() {$(
             assert_eq!("10".parse::<$t<5, 10>>(), Ok($t::<5, 10>::MAX));
             assert_eq!("5".parse::<$t<5, 10>>(), Ok($t::<5, 10>::MIN));
