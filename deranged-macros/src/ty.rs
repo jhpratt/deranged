@@ -2,7 +2,8 @@
 
 use proc_macro::{Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 
-use crate::{compile_error, with_span, Integer};
+use crate::helpers::{compile_error, with_span};
+use crate::Integer;
 
 /// The minimum and maximum values for a primitive integer.
 #[derive(Debug)]

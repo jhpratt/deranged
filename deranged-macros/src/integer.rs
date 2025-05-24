@@ -2,7 +2,7 @@
 
 use proc_macro::{token_stream, Span, TokenStream, TokenTree};
 
-use crate::compile_error;
+use crate::helpers::compile_error;
 
 /// The suffix of an integer literal.
 #[derive(Debug)]
@@ -95,13 +95,13 @@ impl Integer {
                     Some(token) => {
                         return Err(compile_error(
                             &format!("expected {what}"),
-                            Some((punct.span(), token.span())),
+                            (punct.span(), token.span()),
                         ));
                     }
                     None => {
                         return Err(compile_error(
                             &format!("expected {what}"),
-                            Some((punct.span(), punct.span())),
+                            (punct.span(), punct.span()),
                         ));
                     }
                 };
@@ -110,7 +110,7 @@ impl Integer {
             Some(token) => {
                 return Err(compile_error(
                     &format!("expected {what}"),
-                    Some((token.span(), token.span())),
+                    (token.span(), token.span()),
                 ));
             }
             None => {
@@ -123,7 +123,7 @@ impl Integer {
             |err| {
                 Err(compile_error(
                     &err,
-                    Some((negative_span.unwrap_or_else(|| token.span()), token.span())),
+                    (negative_span.unwrap_or_else(|| token.span()), token.span()),
                 ))
             },
             |(raw_value, suffix)| {
