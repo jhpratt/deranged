@@ -1659,13 +1659,12 @@ impl<const MIN: isize, const MAX: isize> rand09::distr::Distribution<RangedIsize
 /// Macro to implement non-fallible `From` conversions for ranged types to other wider/equal ranged
 /// type with different bit sizes.
 ///
-/// This allows you to convert, for example, a RangedU8<-100, 100> to a RangedU32<-100, 100> without
-/// having to cast the value manually and keeping the safe range checks.
+/// This allows you to convert, for example, a RangedI8<-100, 100> to a RangedI32<-100, 100> or
+/// vice-versa without having to cast the value manually and avoid unnecessary range checks.
 ///
 /// The macro checks that the source ranged type's range fits within the destination ranged type's
 /// range, and it uses the larger of the two types for the comparison to ensure that the conversion
 /// is valid. It also asserts that the source and destination ranges are valid at compile time.
-
 macro_rules! impl_ranged_from {
     ($src_ty:ident, $src_ty_base:ty, $dst_ty:ident, $dst_ty_base:ty) => {
         impl<
@@ -1698,6 +1697,7 @@ macro_rules! impl_ranged_from {
                     }
                 };
 
+                // Safety: The conversion is valid because the source range fits within the destination
                 unsafe { $dst_ty::new_unchecked(value.get() as $dst_ty_base) }
             }
         }
