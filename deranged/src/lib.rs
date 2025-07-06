@@ -1697,7 +1697,8 @@ macro_rules! impl_ranged_from {
                     }
                 };
 
-                // Safety: The conversion is valid because the source range fits within the destination
+                // Safety: The conversion is valid because the source range fits within the
+                // destination
                 unsafe { $dst_ty::new_unchecked(value.get() as $dst_ty_base) }
             }
         }
