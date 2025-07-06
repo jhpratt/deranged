@@ -10,6 +10,18 @@ use crate::{
     RangedU8, RangedUsize, TryFromIntError,
 };
 
+#[test]
+fn test_ranged_conversion() {
+    // equal range
+    let _: RangedI8<-5, 5> = RangedI16::<-5, 5>::new_static::<3>().into();
+
+    // wider range
+    let _: RangedI8<-6, 6> = RangedI16::<-5, 5>::new_static::<3>().into();
+
+    // the following fails to compile because the source range is wider than the destination range
+    // let _ : RangedI8<-4, 4> = RangedI16::<-5, 5>::new_static::<3>().into();
+}
+
 macro_rules! if_signed {
     (signed $($x:tt)*) => { $($x)* };
     (unsigned $($x:tt)*) => {};
