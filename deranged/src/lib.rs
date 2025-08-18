@@ -301,11 +301,28 @@ macro_rules! impl_ranged {
             }
 
             /// Returns the value as a primitive type.
+            ///
+            /// A call to this function will output a hint to the compiler that the value is in
+            /// range. In general this will help the optimizer to generate better code, but in edge
+            /// cases this may lead to worse code generation. To avoid outputting the hint, you can
+            #[doc = concat!("use [`", stringify!($type), "::get_without_hint`].")]
             #[inline(always)]
             pub const fn get(self) -> $internal {
                 <Self as $crate::traits::RangeIsValid>::ASSERT;
                 // Safety: A stored value is always in range.
                 unsafe { $crate::assert_unchecked(MIN <= *self.0.get() && *self.0.get() <= MAX) };
+                *self.0.get()
+            }
+
+            /// Returns the value as a primitive type.
+            ///
+            #[doc = concat!("The returned value is identical to [`", stringify!($type), "::get`].")]
+            /// Unlike `get`, no hints are output to the compiler indicating the range that the
+            /// value is in. Depending on the scenario, this may with be helpful or harmful too
+            /// optimization.
+            #[inline(always)]
+            pub const fn get_without_hint(self) -> $internal {
+                <Self as $crate::traits::RangeIsValid>::ASSERT;
                 *self.0.get()
             }
 
@@ -1009,10 +1026,32 @@ macro_rules! impl_ranged {
             }
 
             /// Obtain the value of the struct as an `Option` of the primitive type.
+            ///
+            /// A call to this function will output a hint to the compiler that the value is in
+            /// range. In general this will help the optimizer to generate better code, but in edge
+            /// cases this may lead to worse code generation. To avoid outputting the hint, you can
+            #[doc = concat!(
+                "use [`", stringify!($optional_type), "::get_primitive_without_hint`]."
+            )]
             #[inline(always)]
             pub const fn get_primitive(self) -> Option<$internal> {
                 <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
                 Some(const_try_opt!(self.get()).get())
+            }
+
+            /// Obtain the value of the struct as an `Option` of the primitive type.
+            ///
+            #[doc = concat!(
+                "The returned value is identical to [`", stringify!($optional_type), "::",
+                "get_primitive`]."
+            )]
+            /// Unlike `get_primitive`, no hints are output to the compiler indicating the range
+            /// that the value is in. Depending on the scenario, this may with be helpful or harmful
+            /// too optimization.
+            #[inline(always)]
+            pub const fn get_primitive_without_hint(self) -> Option<$internal> {
+                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                Some(const_try_opt!(self.get()).get_without_hint())
             }
 
             /// Returns `true` if the value is the niche value.
