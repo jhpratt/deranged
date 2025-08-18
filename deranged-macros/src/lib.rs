@@ -6,7 +6,7 @@ mod helpers;
 mod integer;
 mod ty;
 
-use proc_macro::{TokenStream, TokenTree};
+use proc_macro::TokenStream;
 
 use crate::helpers::{parse_comma, unwrap_or_return};
 use crate::integer::Integer;
