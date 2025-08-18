@@ -292,7 +292,7 @@ macro_rules! impl_ranged {
             /// The value must be within the range `MIN..=MAX`.
             #[inline(always)]
             pub const unsafe fn new_unchecked(value: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the value is in range.
                 unsafe {
                     $crate::assert_unchecked(MIN <= value && value <= MAX);
@@ -308,7 +308,7 @@ macro_rules! impl_ranged {
             #[doc = concat!("use [`", stringify!($type), "::get_without_hint`].")]
             #[inline(always)]
             pub const fn get(self) -> $internal {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: A stored value is always in range.
                 unsafe { $crate::assert_unchecked(MIN <= *self.0.get() && *self.0.get() <= MAX) };
                 *self.0.get()
@@ -322,13 +322,13 @@ macro_rules! impl_ranged {
             /// optimization.
             #[inline(always)]
             pub const fn get_without_hint(self) -> $internal {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 *self.0.get()
             }
 
             #[inline(always)]
             pub(crate) const fn get_ref(&self) -> &$internal {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 let value = self.0.get();
                 // Safety: A stored value is always in range.
                 unsafe { $crate::assert_unchecked(MIN <= *value && *value <= MAX) };
@@ -338,7 +338,7 @@ macro_rules! impl_ranged {
             /// Creates a ranged integer if the given value is in the range `MIN..=MAX`.
             #[inline(always)]
             pub const fn new(value: $internal) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 if value < MIN || value > MAX {
                     None
                 } else {
@@ -351,7 +351,10 @@ macro_rules! impl_ranged {
             /// value is not in range.
             #[inline(always)]
             pub const fn new_static<const VALUE: $internal>() -> Self {
-                <($type<MIN, VALUE>, $type<VALUE, MAX>) as $crate::traits::StaticIsValid>::ASSERT;
+                const {
+                    assert!(MIN <= VALUE);
+                    assert!(VALUE <= MAX);
+                }
                 // Safety: The value is in range.
                 unsafe { Self::new_unchecked(VALUE) }
             }
@@ -359,7 +362,7 @@ macro_rules! impl_ranged {
             /// Creates a ranged integer with the given value, saturating if it is out of range.
             #[inline]
             pub const fn new_saturating(value: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 if value < MIN {
                     Self::MIN
                 } else if value > MAX {
@@ -376,10 +379,12 @@ macro_rules! impl_ranged {
             pub const fn expand<const NEW_MIN: $internal, const NEW_MAX: $internal>(
                 self,
             ) -> $type<NEW_MIN, NEW_MAX> {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
-                <$type<NEW_MIN, NEW_MAX> as $crate::traits::RangeIsValid>::ASSERT;
-                <($type<MIN, MAX>, $type<NEW_MIN, NEW_MAX>) as $crate::traits::ExpandIsValid>
-                    ::ASSERT;
+                const {
+                    assert!(MIN <= MAX);
+                    assert!(NEW_MIN <= NEW_MAX);
+                    assert!(NEW_MIN <= MIN);
+                    assert!(NEW_MAX >= MAX);
+                }
                 // Safety: The range is widened.
                 unsafe { $type::new_unchecked(self.get()) }
             }
@@ -392,10 +397,12 @@ macro_rules! impl_ranged {
                 const NEW_MIN: $internal,
                 const NEW_MAX: $internal,
             >(self) -> Option<$type<NEW_MIN, NEW_MAX>> {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
-                <$type<NEW_MIN, NEW_MAX> as $crate::traits::RangeIsValid>::ASSERT;
-                <($type<MIN, MAX>, $type<NEW_MIN, NEW_MAX>) as $crate::traits::NarrowIsValid>
-                    ::ASSERT;
+                const {
+                    assert!(MIN <= MAX);
+                    assert!(NEW_MIN <= NEW_MAX);
+                    assert!(NEW_MIN >= MIN);
+                    assert!(NEW_MAX <= MAX);
+                }
                 $type::<NEW_MIN, NEW_MAX>::new(self.get())
             }
 
@@ -429,7 +436,7 @@ macro_rules! impl_ranged {
             /// ```
             #[inline]
             pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 match $internal::from_str_radix(src, radix) {
                     Ok(value) if value > MAX => {
                         Err(ParseIntError { kind: IntErrorKind::PosOverflow })
@@ -449,7 +456,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_add(self, rhs: $internal) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_add(rhs)))
             }
 
@@ -462,7 +469,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_add(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_add(rhs)))
@@ -474,7 +481,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_sub(self, rhs: $internal) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_sub(rhs)))
             }
 
@@ -487,7 +494,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_sub(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_sub(rhs)))
@@ -499,7 +506,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_mul(self, rhs: $internal) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_mul(rhs)))
             }
 
@@ -512,7 +519,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_mul(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_mul(rhs)))
@@ -524,7 +531,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_div(self, rhs: $internal) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_div(rhs)))
             }
 
@@ -538,7 +545,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_div(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range and that `rhs` is not
                 // zero.
                 unsafe {
@@ -551,7 +558,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_div_euclid(self, rhs: $internal) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_div_euclid(rhs)))
             }
 
@@ -565,7 +572,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_div_euclid(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range and that `rhs` is not
                 // zero.
                 unsafe {
@@ -584,7 +591,7 @@ macro_rules! impl_ranged {
                 self,
                 rhs: $type<RHS_VALUE, RHS_VALUE>,
             ) -> $type<0, RHS_VALUE> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The result is guaranteed to be in range due to the nature of remainder on
                 // unsigned integers.
                 unsafe { $type::new_unchecked(self.get() % rhs.get()) }
@@ -595,7 +602,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_rem(self, rhs: $internal) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_rem(rhs)))
             }
 
@@ -609,7 +616,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_rem(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range and that `rhs` is not
                 // zero.
                 unsafe {
@@ -622,7 +629,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_rem_euclid(self, rhs: $internal) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_rem_euclid(rhs)))
             }
 
@@ -636,7 +643,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_rem_euclid(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range and that `rhs` is not
                 // zero.
                 unsafe {
@@ -651,7 +658,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_neg()))
             }
 
@@ -663,7 +670,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_neg(self) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range.
                 unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_neg())) }
             }
@@ -673,8 +680,17 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const fn neg(self) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
-                <Self as $crate::traits::NegIsSafe>::ASSERT;
+                const {
+                    assert!(MIN <= MAX);
+                    if_signed! { $is_signed
+                        assert!(MIN != $internal::MIN);
+                        assert!(-MIN <= MAX);
+                        assert!(-MAX >= MIN);
+                    }
+                    if_unsigned! { $is_signed
+                        assert!(MAX == 0);
+                    }
+                }
                 // Safety: The compiler asserts that the result is in range.
                 unsafe { self.unchecked_neg() }
             }
@@ -684,7 +700,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_shl(rhs)))
             }
 
@@ -696,7 +712,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_shl(rhs)))
@@ -708,7 +724,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_shr(rhs)))
             }
 
@@ -720,7 +736,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_shr(rhs)))
@@ -733,7 +749,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_abs(self) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_abs()))
             }
 
@@ -746,7 +762,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_abs(self) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range.
                 unsafe { Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_abs())) }
             }
@@ -756,8 +772,12 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const fn abs(self) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
-                <Self as $crate::traits::AbsIsSafe>::ASSERT;
+                const {
+                    assert!(MIN <= MAX);
+                    assert!(MIN != $internal::MIN);
+                    assert!(-MIN <= MAX);
+                }
+                // <Self as $crate::traits::AbsIsSafe>::ASSERT;
                 // Safety: The compiler asserts that the result is in range.
                 unsafe { self.unchecked_abs() }
             });
@@ -767,7 +787,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_pow(self, exp: u32) -> Option<Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(const_try_opt!(self.get().checked_pow(exp)))
             }
 
@@ -780,7 +800,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline(always)]
             pub const unsafe fn unchecked_pow(self, exp: u32) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the result is in range.
                 unsafe {
                     Self::new_unchecked(unsafe_unwrap_unchecked!(self.get().checked_pow(exp)))
@@ -792,7 +812,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn saturating_add(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new_saturating(self.get().saturating_add(rhs))
             }
 
@@ -801,7 +821,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn saturating_sub(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new_saturating(self.get().saturating_sub(rhs))
             }
 
@@ -811,7 +831,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn saturating_neg(self) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new_saturating(self.get().saturating_neg())
             });
 
@@ -820,7 +840,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn saturating_abs(self) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new_saturating(self.get().saturating_abs())
             });
 
@@ -829,7 +849,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn saturating_mul(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new_saturating(self.get().saturating_mul(rhs))
             }
 
@@ -838,7 +858,7 @@ macro_rules! impl_ranged {
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn saturating_pow(self, exp: u32) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new_saturating(self.get().saturating_pow(exp))
             }
 
@@ -876,7 +896,7 @@ macro_rules! impl_ranged {
             #[inline]
             #[allow(trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
             pub const fn wrapping_add(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Forward to internal type's impl if same as type.
                 if MIN == $internal::MIN && MAX == $internal::MAX {
                     // Safety: std's wrapping methods match ranged arithmetic when the range is the internal datatype's range.
@@ -926,7 +946,7 @@ macro_rules! impl_ranged {
             #[inline]
             #[allow(trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
             pub const fn wrapping_sub(self, rhs: $internal) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Forward to internal type's impl if same as type.
                 if MIN == $internal::MIN && MAX == $internal::MAX {
                     // Safety: std's wrapping methods match ranged arithmetic when the range is the internal datatype's range.
@@ -987,14 +1007,14 @@ macro_rules! impl_ranged {
             #[allow(non_snake_case)]
             #[inline(always)]
             pub const fn Some(value: $type<MIN, MAX>) -> Self {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self(value.get())
             }
 
             /// Returns the value as the standard library's [`Option`] type.
             #[inline(always)]
             pub const fn get(self) -> Option<$type<MIN, MAX>> {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 if self.0 == Self::NICHE {
                     None
                 } else {
@@ -1012,7 +1032,7 @@ macro_rules! impl_ranged {
             /// value.
             #[inline(always)]
             pub const unsafe fn some_unchecked(value: $internal) -> Self {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the value is in range.
                 unsafe { $crate::assert_unchecked(MIN <= value && value <= MAX) };
                 Self(value)
@@ -1021,7 +1041,7 @@ macro_rules! impl_ranged {
             /// Obtain the inner value of the struct. This is useful for comparisons.
             #[inline(always)]
             pub(crate) const fn inner(self) -> $internal {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.0
             }
 
@@ -1035,7 +1055,7 @@ macro_rules! impl_ranged {
             )]
             #[inline(always)]
             pub const fn get_primitive(self) -> Option<$internal> {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Some(const_try_opt!(self.get()).get())
             }
 
@@ -1050,21 +1070,21 @@ macro_rules! impl_ranged {
             /// too optimization.
             #[inline(always)]
             pub const fn get_primitive_without_hint(self) -> Option<$internal> {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Some(const_try_opt!(self.get()).get_without_hint())
             }
 
             /// Returns `true` if the value is the niche value.
             #[inline(always)]
             pub const fn is_none(&self) -> bool {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().is_none()
             }
 
             /// Returns `true` if the value is not the niche value.
             #[inline(always)]
             pub const fn is_some(&self) -> bool {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().is_some()
             }
         }
@@ -1072,7 +1092,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> fmt::Debug for $type<MIN, MAX> {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().fmt(f)
             }
         }
@@ -1080,7 +1100,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> fmt::Debug for $optional_type<MIN, MAX> {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().fmt(f)
             }
         }
@@ -1088,7 +1108,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> fmt::Display for $type<MIN, MAX> {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().fmt(f)
             }
         }
@@ -1105,7 +1125,7 @@ macro_rules! impl_ranged {
                 &self,
                 f: smart_display::FormatterOptions,
             ) -> smart_display::Metadata<'_, Self> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get_ref().metadata(f).reuse()
             }
 
@@ -1115,7 +1135,7 @@ macro_rules! impl_ranged {
                 f: &mut fmt::Formatter<'_>,
                 metadata: smart_display::Metadata<'_, Self>,
             ) -> fmt::Result {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().fmt_with_metadata(f, metadata.reuse())
             }
         }
@@ -1123,7 +1143,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> Default for $optional_type<MIN, MAX> {
             #[inline(always)]
             fn default() -> Self {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::None
             }
         }
@@ -1131,7 +1151,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> AsRef<$internal> for $type<MIN, MAX> {
             #[inline(always)]
             fn as_ref(&self) -> &$internal {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 &self.get_ref()
             }
         }
@@ -1139,7 +1159,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> Borrow<$internal> for $type<MIN, MAX> {
             #[inline(always)]
             fn borrow(&self) -> &$internal {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 &self.get_ref()
             }
         }
@@ -1152,8 +1172,10 @@ macro_rules! impl_ranged {
         > PartialEq<$type<MIN_B, MAX_B>> for $type<MIN_A, MAX_A> {
             #[inline(always)]
             fn eq(&self, other: &$type<MIN_B, MAX_B>) -> bool {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
-                <$type<MIN_B, MAX_B> as $crate::traits::RangeIsValid>::ASSERT;
+                const {
+                    assert!(MIN_A <= MAX_A);
+                    assert!(MIN_B <= MAX_B);
+                }
                 self.get() == other.get()
             }
         }
@@ -1166,8 +1188,10 @@ macro_rules! impl_ranged {
         > PartialEq<$optional_type<MIN_B, MAX_B>> for $optional_type<MIN_A, MAX_A> {
             #[inline(always)]
             fn eq(&self, other: &$optional_type<MIN_B, MAX_B>) -> bool {
-                <$type<MIN_A, MAX_A> as $crate::traits::RangeIsValid>::ASSERT;
-                <$type<MIN_B, MAX_B> as $crate::traits::RangeIsValid>::ASSERT;
+                const {
+                    assert!(MIN_A <= MAX_A);
+                    assert!(MIN_B <= MAX_B);
+                }
                 self.inner() == other.inner()
             }
         }
@@ -1180,8 +1204,10 @@ macro_rules! impl_ranged {
         > PartialOrd<$type<MIN_B, MAX_B>> for $type<MIN_A, MAX_A> {
             #[inline(always)]
             fn partial_cmp(&self, other: &$type<MIN_B, MAX_B>) -> Option<Ordering> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
-                <$type<MIN_B, MAX_B> as $crate::traits::RangeIsValid>::ASSERT;
+                const {
+                    assert!(MIN_A <= MAX_A);
+                    assert!(MIN_B <= MAX_B);
+                }
                 self.get().partial_cmp(&other.get())
             }
         }
@@ -1194,8 +1220,10 @@ macro_rules! impl_ranged {
         > PartialOrd<$optional_type<MIN_B, MAX_B>> for $optional_type<MIN_A, MAX_A> {
             #[inline]
             fn partial_cmp(&self, other: &$optional_type<MIN_B, MAX_B>) -> Option<Ordering> {
-                <$type<MIN_A, MAX_A> as $crate::traits::RangeIsValid>::ASSERT;
-                <$type<MIN_B, MAX_B> as $crate::traits::RangeIsValid>::ASSERT;
+                const {
+                    assert!(MIN_A <= MAX_A);
+                    assert!(MIN_B <= MAX_B);
+                }
                 if self.is_none() && other.is_none() {
                     Some(Ordering::Equal)
                 } else if self.is_none() {
@@ -1214,7 +1242,7 @@ macro_rules! impl_ranged {
         > Ord for $optional_type<MIN, MAX> {
             #[inline]
             fn cmp(&self, other: &Self) -> Ordering {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 if self.is_none() && other.is_none() {
                     Ordering::Equal
                 } else if self.is_none() {
@@ -1230,7 +1258,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> fmt::Binary for $type<MIN, MAX> {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().fmt(f)
             }
         }
@@ -1238,7 +1266,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> fmt::LowerHex for $type<MIN, MAX> {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().fmt(f)
             }
         }
@@ -1246,7 +1274,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> fmt::UpperHex for $type<MIN, MAX> {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().fmt(f)
             }
         }
@@ -1254,7 +1282,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> fmt::LowerExp for $type<MIN, MAX> {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().fmt(f)
             }
         }
@@ -1262,7 +1290,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> fmt::UpperExp for $type<MIN, MAX> {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().fmt(f)
             }
         }
@@ -1270,7 +1298,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> fmt::Octal for $type<MIN, MAX> {
             #[inline(always)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().fmt(f)
             }
         }
@@ -1278,7 +1306,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> From<$type<MIN, MAX>> for $internal {
             #[inline(always)]
             fn from(value: $type<MIN, MAX>) -> Self {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 value.get()
             }
         }
@@ -1289,7 +1317,7 @@ macro_rules! impl_ranged {
         > From<$type<MIN, MAX>> for $optional_type<MIN, MAX> {
             #[inline(always)]
             fn from(value: $type<MIN, MAX>) -> Self {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::Some(value)
             }
         }
@@ -1300,7 +1328,7 @@ macro_rules! impl_ranged {
         > From<Option<$type<MIN, MAX>>> for $optional_type<MIN, MAX> {
             #[inline(always)]
             fn from(value: Option<$type<MIN, MAX>>) -> Self {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 match value {
                     Some(value) => Self::Some(value),
                     None => Self::None,
@@ -1314,7 +1342,7 @@ macro_rules! impl_ranged {
         > From<$optional_type<MIN, MAX>> for Option<$type<MIN, MAX>> {
             #[inline(always)]
             fn from(value: $optional_type<MIN, MAX>) -> Self {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 value.get()
             }
         }
@@ -1324,7 +1352,7 @@ macro_rules! impl_ranged {
 
             #[inline]
             fn try_from(value: $internal) -> Result<Self, Self::Error> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::new(value).ok_or(TryFromIntError)
             }
         }
@@ -1334,7 +1362,7 @@ macro_rules! impl_ranged {
 
             #[inline]
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 let value = s.parse::<$internal>().map_err(|e| ParseIntError {
                     kind: e.kind().clone()
                 })?;
@@ -1353,7 +1381,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> serde::Serialize for $type<MIN, MAX> {
             #[inline(always)]
             fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().serialize(serializer)
             }
         }
@@ -1365,7 +1393,7 @@ macro_rules! impl_ranged {
         > serde::Serialize for $optional_type<MIN, MAX> {
             #[inline(always)]
             fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 self.get().serialize(serializer)
             }
         }
@@ -1378,7 +1406,7 @@ macro_rules! impl_ranged {
         > serde::Deserialize<'de> for $type<MIN, MAX> {
             #[inline]
             fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 let internal = <$internal>::deserialize(deserializer)?;
                 Self::new(internal).ok_or_else(|| <D::Error as serde::de::Error>::invalid_value(
                     serde::de::Unexpected::Other("integer"),
@@ -1400,7 +1428,7 @@ macro_rules! impl_ranged {
         > serde::Deserialize<'de> for $optional_type<MIN, MAX> {
             #[inline]
             fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Ok(Self::Some($type::<MIN, MAX>::deserialize(deserializer)?))
             }
         }
@@ -1412,7 +1440,7 @@ macro_rules! impl_ranged {
         > rand08::distributions::Distribution<$type<MIN, MAX>> for rand08::distributions::Standard {
             #[inline]
             fn sample<R: rand08::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 $type::new(rng.gen_range(MIN..=MAX)).expect("rand failed to generate a valid value")
             }
         }
@@ -1426,7 +1454,7 @@ macro_rules! impl_ranged {
             > rand09::distr::Distribution<$type<MIN, MAX>> for rand09::distr::StandardUniform {
                 #[inline]
                 fn sample<R: rand09::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
-                    <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                    const { assert!(MIN <= MAX); }
                     $type::new(rng.random_range(MIN..=MAX)).expect("rand failed to generate a valid value")
                 }
             }
@@ -1440,7 +1468,7 @@ macro_rules! impl_ranged {
         for rand08::distributions::Standard {
             #[inline]
             fn sample<R: rand08::Rng + ?Sized>(&self, rng: &mut R) -> $optional_type<MIN, MAX> {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 rng.r#gen::<Option<$type<MIN, MAX>>>().into()
             }
         }
@@ -1453,7 +1481,7 @@ macro_rules! impl_ranged {
         for rand09::distr::StandardUniform {
             #[inline]
             fn sample<R: rand09::Rng + ?Sized>(&self, rng: &mut R) -> $optional_type<MIN, MAX> {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 if rng.random() {
                     $optional_type::None
                 } else {
@@ -1466,13 +1494,13 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> num_traits::Bounded for $type<MIN, MAX> {
             #[inline(always)]
             fn min_value() -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::MIN
             }
 
             #[inline(always)]
             fn max_value() -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Self::MAX
             }
         }
@@ -1481,7 +1509,7 @@ macro_rules! impl_ranged {
         impl<const MIN: $internal, const MAX: $internal> quickcheck::Arbitrary for $type<MIN, MAX> {
             #[inline]
             fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-                <Self as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 // Safety: The `rem_euclid` call and addition ensure that the value is in range.
                 unsafe {
                     Self::new_unchecked($internal::arbitrary(g).rem_euclid(MAX - MIN + 1) + MIN)
@@ -1505,7 +1533,7 @@ macro_rules! impl_ranged {
         > quickcheck::Arbitrary for $optional_type<MIN, MAX> {
             #[inline]
             fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-                <$type<MIN, MAX> as $crate::traits::RangeIsValid>::ASSERT;
+                const { assert!(MIN <= MAX); }
                 Option::<$type<MIN, MAX>>::arbitrary(g).into()
             }
 
@@ -1612,7 +1640,9 @@ impl<const MIN: usize, const MAX: usize> rand09::distr::Distribution<RangedUsize
 {
     #[inline]
     fn sample<R: rand09::Rng + ?Sized>(&self, rng: &mut R) -> RangedUsize<MIN, MAX> {
-        <RangedUsize<MIN, MAX> as traits::RangeIsValid>::ASSERT;
+        const {
+            assert!(MIN <= MAX);
+        }
 
         #[cfg(target_pointer_width = "16")]
         let value = rng.random_range(MIN as u16..=MAX as u16) as usize;
@@ -1637,7 +1667,9 @@ impl<const MIN: isize, const MAX: isize> rand09::distr::Distribution<RangedIsize
 {
     #[inline]
     fn sample<R: rand09::Rng + ?Sized>(&self, rng: &mut R) -> RangedIsize<MIN, MAX> {
-        <RangedIsize<MIN, MAX> as traits::RangeIsValid>::ASSERT;
+        const {
+            assert!(MIN <= MAX);
+        }
 
         #[cfg(target_pointer_width = "16")]
         let value = rng.random_range(MIN as i16..=MAX as i16) as isize;
