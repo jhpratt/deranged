@@ -17,6 +17,7 @@ use core::cmp::Ordering;
 use core::error::Error;
 use core::fmt;
 use core::num::IntErrorKind;
+use core::hint::assert_unchecked;
 use core::str::FromStr;
 
 /// A macro to define a ranged integer with an automatically computed inner type.
@@ -180,22 +181,6 @@ macro_rules! unsafe_unwrap_unchecked {
     }};
 }
 
-/// Informs the optimizer that a condition is always true. If the condition is false, the behavior
-/// is undefined.
-///
-/// # Safety
-///
-/// `b` must be `true`.
-// TODO remove in favor of `core::hint::assert_unchecked` when MSRV is ≥1.81
-#[inline]
-const unsafe fn assert_unchecked(b: bool) {
-    debug_assert!(b);
-    if !b {
-        // Safety: The caller must ensure that `b` is true.
-        unsafe { core::hint::unreachable_unchecked() }
-    }
-}
-
 /// Output the provided code if and only if the list does not include `rand_09`.
 #[allow(unused_macro_rules)]
 macro_rules! if_not_manual_rand_09 {
@@ -289,7 +274,7 @@ macro_rules! impl_ranged {
                 const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the value is in range.
                 unsafe {
-                    $crate::assert_unchecked(MIN <= value && value <= MAX);
+                    assert_unchecked(MIN <= value && value <= MAX);
                     Self(Unsafe::new(value))
                 }
             }
@@ -304,7 +289,7 @@ macro_rules! impl_ranged {
             pub const fn get(self) -> $internal {
                 const { assert!(MIN <= MAX); }
                 // Safety: A stored value is always in range.
-                unsafe { $crate::assert_unchecked(MIN <= *self.0.get() && *self.0.get() <= MAX) };
+                unsafe { assert_unchecked(MIN <= *self.0.get() && *self.0.get() <= MAX) };
                 *self.0.get()
             }
 
@@ -325,7 +310,7 @@ macro_rules! impl_ranged {
                 const { assert!(MIN <= MAX); }
                 let value = self.0.get();
                 // Safety: A stored value is always in range.
-                unsafe { $crate::assert_unchecked(MIN <= *value && *value <= MAX) };
+                unsafe { assert_unchecked(MIN <= *value && *value <= MAX) };
                 value
             }
 
@@ -1028,7 +1013,7 @@ macro_rules! impl_ranged {
             pub const unsafe fn some_unchecked(value: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the value is in range.
-                unsafe { $crate::assert_unchecked(MIN <= value && value <= MAX) };
+                unsafe { assert_unchecked(MIN <= value && value <= MAX) };
                 Self(value)
             }
 
