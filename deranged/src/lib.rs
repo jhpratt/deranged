@@ -13,7 +13,6 @@ extern crate alloc;
 
 #[cfg(test)]
 mod tests;
-mod traits;
 mod unsafe_wrapper;
 
 use core::borrow::Borrow;
@@ -224,6 +223,7 @@ macro_rules! impl_ranged {
             signed: $is_signed:ident
             unsigned: $unsigned_type:ident
             optional: $optional_type:ident
+            from: [$($from:ident($from_internal:ident))+]
             $(manual: [$($skips:ident)+])?
         }
     )*) => {$(
@@ -1377,6 +1377,75 @@ macro_rules! impl_ranged {
             }
         }
 
+        $(impl<
+                const MIN_SRC: $from_internal,
+                const MAX_SRC: $from_internal,
+                const MIN_DST: $internal,
+                const MAX_DST: $internal,
+            > From<$from<MIN_SRC, MAX_SRC>> for $type<MIN_DST, MAX_DST>
+        {
+            #[inline(always)]
+            #[allow(trivial_numeric_casts, unused_comparisons)]
+            fn from(value: $from<MIN_SRC, MAX_SRC>) -> Self {
+                const {
+                    assert!(MIN_SRC <= MAX_SRC, "source range is invalid");
+                    assert!(MIN_DST <= MAX_DST, "target range is invalid");
+
+                    match ($from_internal::MIN == 0, $internal::MIN == 0) {
+                        // unsigned -> unsigned
+                        (true, true) => {
+                            assert!(
+                                MIN_SRC as u128 >= MIN_DST as u128,
+                                "minimum value cannot be represented in the target range"
+                            );
+                            assert!(
+                                MAX_SRC as u128 <= MAX_DST as u128,
+                                "maximum value cannot be represented in the target range"
+                            );
+                        }
+                        // signed -> signed
+                        (false, false) => {
+                            assert!(
+                                MIN_SRC as i128 >= MIN_DST as i128,
+                                "minimum value cannot be represented in the target range"
+                            );
+                            assert!(
+                                MAX_SRC as i128 <= MAX_DST as i128,
+                                "maximum value cannot be represented in the target range"
+                            );
+                        }
+                        // unsigned -> signed
+                        (true, false) => {
+                            assert!(
+                                MIN_DST < 0 || MIN_SRC as u128 >= MIN_DST as u128,
+                                "minimum value cannot be represented in the target range"
+                            );
+                            assert!(
+                                MAX_DST >= 0
+                                    && MAX_SRC as u128 <= i128::MAX as u128
+                                    && MAX_SRC as i128 <= MAX_DST as i128,
+                                "maximum value cannot be represented in the target range"
+                            );
+                        }
+                        // signed -> unsigned
+                        (false, true) => {
+                            assert!(
+                                MIN_SRC >= 0 && MIN_SRC as u128 >= MIN_DST as u128,
+                                "minimum value cannot be represented in the target range"
+                            );
+                            assert!(
+                                MAX_SRC >= 0 && MAX_SRC as u128 <= MAX_DST as u128,
+                                "maximum value cannot be represented in the target range"
+                            );
+                        }
+                    }
+                }
+
+                // Safety: The source range is a subset of the destination range.
+                unsafe { $type::new_unchecked(value.get() as $internal) }
+            }
+        })+
+
         #[cfg(feature = "serde")]
         impl<const MIN: $internal, const MAX: $internal> serde::Serialize for $type<MIN, MAX> {
             #[inline(always)]
@@ -1552,6 +1621,19 @@ impl_ranged! {
         signed: false
         unsigned: u8
         optional: OptionRangedU8
+        from: [
+            RangedU16(u16)
+            RangedU32(u32)
+            RangedU64(u64)
+            RangedU128(u128)
+            RangedUsize(usize)
+            RangedI8(i8)
+            RangedI16(i16)
+            RangedI32(i32)
+            RangedI64(i64)
+            RangedI128(i128)
+            RangedIsize(isize)
+        ]
     }
     RangedU16 {
         mod_name: ranged_u16
@@ -1559,6 +1641,19 @@ impl_ranged! {
         signed: false
         unsigned: u16
         optional: OptionRangedU16
+        from: [
+            RangedU8(u8)
+            RangedU32(u32)
+            RangedU64(u64)
+            RangedU128(u128)
+            RangedUsize(usize)
+            RangedI8(i8)
+            RangedI16(i16)
+            RangedI32(i32)
+            RangedI64(i64)
+            RangedI128(i128)
+            RangedIsize(isize)
+        ]
     }
     RangedU32 {
         mod_name: ranged_u32
@@ -1566,6 +1661,19 @@ impl_ranged! {
         signed: false
         unsigned: u32
         optional: OptionRangedU32
+        from: [
+            RangedU8(u8)
+            RangedU16(u16)
+            RangedU64(u64)
+            RangedU128(u128)
+            RangedUsize(usize)
+            RangedI8(i8)
+            RangedI16(i16)
+            RangedI32(i32)
+            RangedI64(i64)
+            RangedI128(i128)
+            RangedIsize(isize)
+        ]
     }
     RangedU64 {
         mod_name: ranged_u64
@@ -1573,6 +1681,19 @@ impl_ranged! {
         signed: false
         unsigned: u64
         optional: OptionRangedU64
+        from: [
+            RangedU8(u8)
+            RangedU16(u16)
+            RangedU32(u32)
+            RangedU128(u128)
+            RangedUsize(usize)
+            RangedI8(i8)
+            RangedI16(i16)
+            RangedI32(i32)
+            RangedI64(i64)
+            RangedI128(i128)
+            RangedIsize(isize)
+        ]
     }
     RangedU128 {
         mod_name: ranged_u128
@@ -1580,6 +1701,19 @@ impl_ranged! {
         signed: false
         unsigned: u128
         optional: OptionRangedU128
+        from: [
+            RangedU8(u8)
+            RangedU16(u16)
+            RangedU32(u32)
+            RangedU64(u64)
+            RangedUsize(usize)
+            RangedI8(i8)
+            RangedI16(i16)
+            RangedI32(i32)
+            RangedI64(i64)
+            RangedI128(i128)
+            RangedIsize(isize)
+        ]
     }
     RangedUsize {
         mod_name: ranged_usize
@@ -1587,6 +1721,19 @@ impl_ranged! {
         signed: false
         unsigned: usize
         optional: OptionRangedUsize
+        from: [
+            RangedU8(u8)
+            RangedU16(u16)
+            RangedU32(u32)
+            RangedU64(u64)
+            RangedU128(u128)
+            RangedI8(i8)
+            RangedI16(i16)
+            RangedI32(i32)
+            RangedI64(i64)
+            RangedI128(i128)
+            RangedIsize(isize)
+        ]
         manual: [rand_09]
     }
     RangedI8 {
@@ -1595,6 +1742,19 @@ impl_ranged! {
         signed: true
         unsigned: u8
         optional: OptionRangedI8
+        from: [
+            RangedU8(u8)
+            RangedU16(u16)
+            RangedU32(u32)
+            RangedU64(u64)
+            RangedU128(u128)
+            RangedUsize(usize)
+            RangedI16(i16)
+            RangedI32(i32)
+            RangedI64(i64)
+            RangedI128(i128)
+            RangedIsize(isize)
+        ]
     }
     RangedI16 {
         mod_name: ranged_i16
@@ -1602,6 +1762,19 @@ impl_ranged! {
         signed: true
         unsigned: u16
         optional: OptionRangedI16
+        from: [
+            RangedU8(u8)
+            RangedU16(u16)
+            RangedU32(u32)
+            RangedU64(u64)
+            RangedU128(u128)
+            RangedUsize(usize)
+            RangedI8(i8)
+            RangedI32(i32)
+            RangedI64(i64)
+            RangedI128(i128)
+            RangedIsize(isize)
+        ]
     }
     RangedI32 {
         mod_name: ranged_i32
@@ -1609,6 +1782,19 @@ impl_ranged! {
         signed: true
         unsigned: u32
         optional: OptionRangedI32
+        from: [
+            RangedU8(u8)
+            RangedU16(u16)
+            RangedU32(u32)
+            RangedU64(u64)
+            RangedU128(u128)
+            RangedUsize(usize)
+            RangedI8(i8)
+            RangedI16(i16)
+            RangedI64(i64)
+            RangedI128(i128)
+            RangedIsize(isize)
+        ]
     }
     RangedI64 {
         mod_name: ranged_i64
@@ -1616,6 +1802,19 @@ impl_ranged! {
         signed: true
         unsigned: u64
         optional: OptionRangedI64
+        from: [
+            RangedU8(u8)
+            RangedU16(u16)
+            RangedU32(u32)
+            RangedU64(u64)
+            RangedU128(u128)
+            RangedUsize(usize)
+            RangedI8(i8)
+            RangedI16(i16)
+            RangedI32(i32)
+            RangedI128(i128)
+            RangedIsize(isize)
+        ]
     }
     RangedI128 {
         mod_name: ranged_i128
@@ -1623,6 +1822,19 @@ impl_ranged! {
         signed: true
         unsigned: u128
         optional: OptionRangedI128
+        from: [
+            RangedU8(u8)
+            RangedU16(u16)
+            RangedU32(u32)
+            RangedU64(u64)
+            RangedU128(u128)
+            RangedUsize(usize)
+            RangedI8(i8)
+            RangedI16(i16)
+            RangedI32(i32)
+            RangedI64(i64)
+            RangedIsize(isize)
+        ]
     }
     RangedIsize {
         mod_name: ranged_isize
@@ -1630,6 +1842,19 @@ impl_ranged! {
         signed: true
         unsigned: usize
         optional: OptionRangedIsize
+        from: [
+            RangedU8(u8)
+            RangedU16(u16)
+            RangedU32(u32)
+            RangedU64(u64)
+            RangedU128(u128)
+            RangedUsize(usize)
+            RangedI8(i8)
+            RangedI16(i16)
+            RangedI32(i32)
+            RangedI64(i64)
+            RangedI128(i128)
+        ]
         manual: [rand_09]
     }
 }
