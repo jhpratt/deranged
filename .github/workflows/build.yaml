@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         rust:
-          - { version: "1.79.0", name: MSRV }
+          - { version: "1.81.0", name: MSRV }
           - { version: stable, name: stable }
 
     steps:
