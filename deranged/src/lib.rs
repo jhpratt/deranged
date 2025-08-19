@@ -5,9 +5,6 @@
 #![doc(test(attr(deny(warnings))))]
 #![cfg_attr(docsrs, doc(cfg_hide(docsrs)))]
 
-#[cfg(feature = "std")]
-extern crate std;
-
 #[cfg(all(feature = "alloc", any(feature = "serde", feature = "quickcheck")))]
 extern crate alloc;
 
@@ -17,11 +14,10 @@ mod unsafe_wrapper;
 
 use core::borrow::Borrow;
 use core::cmp::Ordering;
+use core::error::Error;
 use core::fmt;
 use core::num::IntErrorKind;
 use core::str::FromStr;
-#[cfg(feature = "std")]
-use std::error::Error;
 
 /// A macro to define a ranged integer with an automatically computed inner type.
 ///
@@ -86,7 +82,6 @@ impl fmt::Display for TryFromIntError {
         f.write_str("out of range integral type conversion attempted")
     }
 }
-#[cfg(feature = "std")]
 impl Error for TryFromIntError {}
 
 /// An error which can be returned when parsing an integer.
@@ -139,7 +134,6 @@ impl fmt::Display for ParseIntError {
     }
 }
 
-#[cfg(feature = "std")]
 impl Error for ParseIntError {}
 
 /// `?` for `Option` types, usable in `const` contexts.

@@ -12,7 +12,7 @@ description = "Ranged integers"
 include = ["src/**/*", "LICENSE-*", "README.md"]
 
 [features]
-default = ["std"]
+default = []
 alloc = []
 macros = ["dep:deranged-macros"]
 num = ["dep:num-traits"]
@@ -22,7 +22,6 @@ rand = ["rand08", "rand09"]
 rand08 = ["dep:rand08"]
 rand09 = ["dep:rand09"]
 serde = ["dep:serde"]
-std = ["alloc"]
 
 [lints]
 workspace = true

@@ -1,3 +1,5 @@
+extern crate std;
+
 use core::hash::Hash;
 use std::format;
 use std::prelude::rust_2021::*;
