@@ -16,8 +16,8 @@ use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::error::Error;
 use core::fmt;
-use core::num::IntErrorKind;
 use core::hint::assert_unchecked;
+use core::num::{IntErrorKind, NonZero};
 use core::str::FromStr;
 
 /// A macro to define a ranged integer with an automatically computed inner type.
@@ -254,6 +254,23 @@ macro_rules! impl_ranged {
                 unsafe { $type::new_unchecked(VALUE) }
             }
         }
+
+        if_unsigned! { $is_signed
+        impl $type<1, { $internal::MAX }> {
+            /// Creates a ranged integer from a non-zero value.
+            #[inline(always)]
+            pub const fn from_nonzero(value: NonZero<$internal>) -> Self {
+                // Safety: The value is non-zero, so it is in range.
+                unsafe { Self::new_unchecked(value.get()) }
+            }
+
+            /// Creates a non-zero value from a ranged integer.
+            #[inline(always)]
+            pub const fn to_nonzero(self) -> NonZero<$internal> {
+                // Safety: The value is in range, so it is non-zero.
+                unsafe { NonZero::new_unchecked(self.get()) }
+            }
+        }}
 
         impl<const MIN: $internal, const MAX: $internal> $type<MIN, MAX> {
             /// The smallest value that can be represented by this type.
@@ -1279,6 +1296,22 @@ macro_rules! impl_ranged {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 const { assert!(MIN <= MAX); }
                 self.get().fmt(f)
+            }
+        }
+
+        if_unsigned! { $is_signed
+            impl From<NonZero<$internal>> for $type<1, { $internal::MAX }> {
+                #[inline(always)]
+                fn from(value: NonZero<$internal>) -> Self {
+                    Self::from_nonzero(value)
+                }
+            }
+
+            impl From<$type<1, { $internal::MAX }>> for NonZero<$internal> {
+                #[inline(always)]
+                fn from(value: $type<1, { $internal::MAX }>) -> Self {
+                    value.to_nonzero()
+                }
             }
         }
 
