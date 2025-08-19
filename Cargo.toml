@@ -10,7 +10,7 @@ debug = 0
 debug = 2
 
 [workspace.dependencies]
-deranged-macros = { version = "=0.2.0", path = "deranged-macros" }
+deranged-macros = { version = "=0.3.0", path = "deranged-macros" }
 
 # Deny-by-default lints: These are lints that indicate a lack of compiler guarantees, future
 # incompatibility (with no guarantees in the meantime) introduce surprising behavior, or are likely
