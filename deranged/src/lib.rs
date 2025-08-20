@@ -286,6 +286,7 @@ macro_rules! impl_ranged {
             /// # Safety
             ///
             /// The value must be within the range `MIN..=MAX`.
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn new_unchecked(value: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -302,6 +303,7 @@ macro_rules! impl_ranged {
             /// range. In general this will help the optimizer to generate better code, but in edge
             /// cases this may lead to worse code generation. To avoid outputting the hint, you can
             #[doc = concat!("use [`", stringify!($type), "::get_without_hint`].")]
+            #[track_caller]
             #[inline(always)]
             pub const fn get(self) -> $internal {
                 const { assert!(MIN <= MAX); }
@@ -322,6 +324,7 @@ macro_rules! impl_ranged {
                 *self.0.get()
             }
 
+            #[track_caller]
             #[inline(always)]
             pub(crate) const fn get_ref(&self) -> &$internal {
                 const { assert!(MIN <= MAX); }
@@ -463,6 +466,7 @@ macro_rules! impl_ranged {
             ///
             /// The result of `self + rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_add(self, rhs: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -488,6 +492,7 @@ macro_rules! impl_ranged {
             ///
             /// The result of `self - rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_sub(self, rhs: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -513,6 +518,7 @@ macro_rules! impl_ranged {
             ///
             /// The result of `self * rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_mul(self, rhs: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -539,6 +545,7 @@ macro_rules! impl_ranged {
             /// `self` must not be zero and the result of `self / rhs` must be in the range
             /// `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_div(self, rhs: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -566,6 +573,7 @@ macro_rules! impl_ranged {
             /// `self` must not be zero and the result of `self.div_euclid(rhs)` must be in the
             /// range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_div_euclid(self, rhs: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -582,6 +590,7 @@ macro_rules! impl_ranged {
             /// Remainder. Computes `self % rhs`, statically guaranteeing that the returned value
             /// is in range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline]
             pub const fn rem<const RHS_VALUE: $internal>(
                 self,
@@ -610,6 +619,7 @@ macro_rules! impl_ranged {
             /// `self` must not be zero and the result of `self % rhs` must be in the range
             /// `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_rem(self, rhs: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -637,6 +647,7 @@ macro_rules! impl_ranged {
             /// `self` must not be zero and the result of `self.rem_euclid(rhs)` must be in the
             /// range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_rem_euclid(self, rhs: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -664,6 +675,7 @@ macro_rules! impl_ranged {
             ///
             /// The result of `-self` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_neg(self) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -706,6 +718,7 @@ macro_rules! impl_ranged {
             ///
             /// The result of `self << rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -730,6 +743,7 @@ macro_rules! impl_ranged {
             ///
             /// The result of `self >> rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -756,6 +770,7 @@ macro_rules! impl_ranged {
             ///
             /// The result of `self.abs()` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_abs(self) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -794,6 +809,7 @@ macro_rules! impl_ranged {
             ///
             /// The result of `self.pow(exp)` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_pow(self, exp: u32) -> Self {
                 const { assert!(MIN <= MAX); }
@@ -862,6 +878,7 @@ macro_rules! impl_ranged {
             // Not public because it doesn't match stdlib's "method_unsigned implemented only for signed type" tradition.
             // Also because this isn't implemented for normal types in std.
             #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[track_caller]
             #[inline]
             #[allow(trivial_numeric_casts)] // needed since some casts have to send unsigned -> unsigned to handle signed -> unsigned
             const fn rem_euclid_unsigned(
@@ -1027,6 +1044,7 @@ macro_rules! impl_ranged {
             /// value optimization is unspecified, the provided value must not be the niche
             /// value.
             #[inline(always)]
+            #[track_caller]
             pub const unsafe fn some_unchecked(value: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
                 // Safety: The caller must ensure that the value is in range.
