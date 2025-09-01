@@ -372,6 +372,24 @@ macro_rules! impl_ranged {
                 }
             }
 
+            /// Emit a hint to the compiler that the value is in range.
+            ///
+            /// In some situations, this can help the optimizer to generate better code. In edge
+            /// cases this may lead to **worse** code generation. If you are unsure whether this is
+            /// helpful, harmful, or neutral, you should use [`cargo-show-asm`] to compare the
+            /// generated assembly.
+            ///
+            /// Aside from potentially affecting optimization, this function is a no-op.
+            ///
+            /// [`cargo-show-asm`]: https://crates.io/crates/cargo-show-asm
+            #[inline(always)]
+            pub const fn emit_range_hint(self) {
+                const { assert!(MIN <= MAX); }
+                let value = self.0.get();
+                // Safety: A stored value is always in range.
+                unsafe { assert_unchecked(MIN <= *value && *value <= MAX) };
+            }
+
             /// Expand the range that the value may be in. **Fails to compile** if the new range is
             /// not a superset of the current range.
             #[inline(always)]
