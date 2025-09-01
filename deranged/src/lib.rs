@@ -892,6 +892,24 @@ macro_rules! impl_ranged {
                 Self::new_saturating(self.get().saturating_pow(exp))
             }
 
+            if_signed! { $is_signed
+                /// Returns `true` if the number is positive and `false` if the number is zero or
+                /// negative.
+                #[inline]
+                pub const fn is_positive(self) -> bool {
+                    const { assert!(MIN <= MAX); }
+                    self.get().is_positive()
+                }
+
+                /// Returns `true` if the number is negative and `false` if the number is zero or
+                /// positive.
+                #[inline]
+                pub const fn is_negative(self) -> bool {
+                    const { assert!(MIN <= MAX); }
+                    self.get().is_negative()
+                }
+            }
+
             /// Compute the `rem_euclid` of this type with its unsigned type equivalent
             // Not public because it doesn't match stdlib's "method_unsigned implemented only for signed type" tradition.
             // Also because this isn't implemented for normal types in std.
