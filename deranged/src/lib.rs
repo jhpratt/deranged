@@ -104,6 +104,7 @@ impl Error for TryFromIntError {}
 ///     println!("Failed conversion to RangedI32: {e}");
 /// }
 /// ```
+#[allow(missing_copy_implementations)] // same as `std`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseIntError {
     #[allow(clippy::missing_docs_in_private_items)]
@@ -1513,9 +1514,10 @@ macro_rules! impl_ranged {
         })+
 
         #[cfg(feature = "serde")]
-        impl<const MIN: $internal, const MAX: $internal> serde::Serialize for $type<MIN, MAX> {
+        impl<const MIN: $internal, const MAX: $internal> serde_core::Serialize for $type<MIN, MAX> {
             #[inline(always)]
-            fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            fn serialize<S: serde_core::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            {
                 const { assert!(MIN <= MAX); }
                 self.get().serialize(serializer)
             }
@@ -1525,9 +1527,10 @@ macro_rules! impl_ranged {
         impl<
             const MIN: $internal,
             const MAX: $internal,
-        > serde::Serialize for $optional_type<MIN, MAX> {
+        > serde_core::Serialize for $optional_type<MIN, MAX> {
             #[inline(always)]
-            fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            fn serialize<S: serde_core::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            {
                 const { assert!(MIN <= MAX); }
                 self.get().serialize(serializer)
             }
@@ -1538,20 +1541,24 @@ macro_rules! impl_ranged {
             'de,
             const MIN: $internal,
             const MAX: $internal,
-        > serde::Deserialize<'de> for $type<MIN, MAX> {
+        > serde_core::Deserialize<'de> for $type<MIN, MAX> {
             #[inline]
-            fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            fn deserialize<D: serde_core::Deserializer<'de>>(deserializer: D)
+                -> Result<Self, D::Error>
+            {
                 const { assert!(MIN <= MAX); }
                 let internal = <$internal>::deserialize(deserializer)?;
-                Self::new(internal).ok_or_else(|| <D::Error as serde::de::Error>::invalid_value(
-                    serde::de::Unexpected::Other("integer"),
-                    #[cfg(feature = "alloc")] {
-                        &alloc::format!("an integer in the range {}..={}", MIN, MAX).as_ref()
-                    },
-                    #[cfg(not(feature = "alloc"))] {
-                        &"an integer in the valid range"
-                    }
-                ))
+                Self::new(internal).ok_or_else(||
+                    <D::Error as serde_core::de::Error>::invalid_value(
+                        serde_core::de::Unexpected::Other("integer"),
+                        #[cfg(feature = "alloc")] {
+                            &alloc::format!("an integer in the range {}..={}", MIN, MAX).as_ref()
+                        },
+                        #[cfg(not(feature = "alloc"))] {
+                            &"an integer in the valid range"
+                        }
+                    )
+                )
             }
         }
 
@@ -1560,9 +1567,11 @@ macro_rules! impl_ranged {
             'de,
             const MIN: $internal,
             const MAX: $internal,
-        > serde::Deserialize<'de> for $optional_type<MIN, MAX> {
+        > serde_core::Deserialize<'de> for $optional_type<MIN, MAX> {
             #[inline]
-            fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            fn deserialize<D: serde_core::Deserializer<'de>>(deserializer: D)
+                -> Result<Self, D::Error>
+            {
                 const { assert!(MIN <= MAX); }
                 Ok(Self::Some($type::<MIN, MAX>::deserialize(deserializer)?))
             }

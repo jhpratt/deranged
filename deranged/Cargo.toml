@@ -21,7 +21,7 @@ quickcheck = ["dep:quickcheck", "alloc"]
 rand = ["rand08", "rand09"]
 rand08 = ["dep:rand08"]
 rand09 = ["dep:rand09"]
-serde = ["dep:serde"]
+serde = ["dep:serde_core"]
 
 [lints]
 workspace = true
@@ -38,7 +38,7 @@ powerfmt = { version = "0.2.0", optional = true, default-features = false }
 quickcheck = { version = "1.0.3", default-features = false, optional = true }
 rand08 = { package = "rand", version = "0.8.4", optional = true, default-features = false }
 rand09 = { package = "rand", version = "0.9.0", optional = true, default-features = false }
-serde = { version = "1.0.126", optional = true, default-features = false }
+serde_core = { version = "1.0.220", optional = true, default-features = false }
 
 [dev-dependencies]
 rand08 = { package = "rand", version = "0.8.4" }
