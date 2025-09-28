@@ -1,9 +1,8 @@
 //! `deranged` is a proof-of-concept implementation of ranged integers.
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg, doc_cfg_hide))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![no_std]
 #![doc(test(attr(deny(warnings))))]
-#![cfg_attr(docsrs, doc(cfg_hide(docsrs)))]
 
 #[cfg(all(feature = "alloc", any(feature = "serde", feature = "quickcheck")))]
 extern crate alloc;
