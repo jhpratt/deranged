@@ -35,7 +35,8 @@ use core::str::FromStr;
 /// int!(-5, 5);   // RangedI8<-5, 5>
 /// int!(-5u, 5);  // compile error (-5 cannot be unsigned)
 /// ```
-#[cfg(all(docsrs, feature = "macros"))]
+#[cfg(docsrs)]
+#[doc(cfg(feature = "macros"))]
 #[macro_export]
 macro_rules! int {
     ($min:literal, $max:literal) => {};
@@ -57,7 +58,8 @@ macro_rules! int {
 /// opt_int!(-5, 5);   // OptionRangedI8<-5, 5>
 /// opt_int!(-5u, 5);  // compile error (-5 cannot be unsigned)
 /// ```
-#[cfg(all(docsrs, feature = "macros"))]
+#[cfg(docsrs)]
+#[doc(cfg(feature = "macros"))]
 #[macro_export]
 macro_rules! opt_int {
     ($min:literal, $max:literal) => {};
