@@ -318,7 +318,7 @@ macro_rules! impl_ranged {
             ///
             #[doc = concat!("The returned value is identical to [`", stringify!($type), "::get`].")]
             /// Unlike `get`, no hints are output to the compiler indicating the range that the
-            /// value is in. Depending on the scenario, this may with be helpful or harmful too
+            /// value is in. Depending on the scenario, this may with be helpful or harmful to
             /// optimization.
             #[inline(always)]
             pub const fn get_without_hint(self) -> $internal {
@@ -1119,7 +1119,7 @@ macro_rules! impl_ranged {
             )]
             /// Unlike `get_primitive`, no hints are output to the compiler indicating the range
             /// that the value is in. Depending on the scenario, this may with be helpful or harmful
-            /// too optimization.
+            /// to optimization.
             #[inline(always)]
             pub const fn get_primitive_without_hint(self) -> Option<$internal> {
                 const { assert!(MIN <= MAX); }
