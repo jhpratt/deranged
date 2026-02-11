@@ -48,7 +48,7 @@ dependencies = [
 
 [[package]]
 name = "deranged"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "deranged-macros",
  "num-traits",
