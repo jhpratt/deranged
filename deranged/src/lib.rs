@@ -195,6 +195,18 @@ macro_rules! if_not_manual_rand_09 {
     };
 }
 
+/// Output the provided code if and only if the list does not include `rand_010`.
+#[allow(unused_macro_rules)]
+macro_rules! if_not_manual_rand_010 {
+    ([rand_010 $($rest:ident)*] $($output:tt)*) => {};
+    ([] $($output:tt)*) => {
+        $($output)*
+    };
+    ([$first:ident $($rest:ident)*] $($output:tt)*) => {
+        if_not_manual_rand_010!([$($rest)*] $($output)*);
+    };
+}
+
 /// Implement a ranged integer type.
 macro_rules! impl_ranged {
     ($(
@@ -1605,6 +1617,22 @@ macro_rules! impl_ranged {
             }
         }
 
+        if_not_manual_rand_010! {
+            [$($($skips)+)?]
+            #[cfg(feature = "rand010")]
+            impl<
+                const MIN: $internal,
+                const MAX: $internal,
+            > rand010::distr::Distribution<$type<MIN, MAX>> for rand010::distr::StandardUniform {
+                #[inline]
+                fn sample<R: rand010::Rng + ?Sized>(&self, rng: &mut R) -> $type<MIN, MAX> {
+                    const { assert!(MIN <= MAX); }
+                    use rand010::RngExt as _;
+                    $type::new(rng.random_range(MIN..=MAX)).expect("rand failed to generate a valid value")
+                }
+            }
+        }
+
         #[cfg(feature = "rand08")]
         impl<
             const MIN: $internal,
@@ -1627,6 +1655,24 @@ macro_rules! impl_ranged {
             #[inline]
             fn sample<R: rand09::Rng + ?Sized>(&self, rng: &mut R) -> $optional_type<MIN, MAX> {
                 const { assert!(MIN <= MAX); }
+                if rng.random() {
+                    $optional_type::None
+                } else {
+                    $optional_type::Some(rng.random::<$type<MIN, MAX>>())
+                }
+            }
+        }
+
+        #[cfg(feature = "rand010")]
+        impl<
+            const MIN: $internal,
+            const MAX: $internal,
+        > rand010::distr::Distribution<$optional_type<MIN, MAX>>
+        for rand010::distr::StandardUniform {
+            #[inline]
+            fn sample<R: rand010::Rng + ?Sized>(&self, rng: &mut R) -> $optional_type<MIN, MAX> {
+                const { assert!(MIN <= MAX); }
+                use rand010::RngExt as _;
                 if rng.random() {
                     $optional_type::None
                 } else {
@@ -1810,7 +1856,7 @@ impl_ranged! {
             RangedI128(i128)
             RangedIsize(isize)
         ]
-        manual: [rand_09]
+        manual: [rand_09 rand_010]
     }
     RangedI8 {
         mod_name: ranged_i8
@@ -1931,7 +1977,7 @@ impl_ranged! {
             RangedI64(i64)
             RangedI128(i128)
         ]
-        manual: [rand_09]
+        manual: [rand_09 rand_010]
     }
 }
 
@@ -1971,6 +2017,64 @@ impl<const MIN: isize, const MAX: isize> rand09::distr::Distribution<RangedIsize
         const {
             assert!(MIN <= MAX);
         }
+
+        #[cfg(target_pointer_width = "16")]
+        let value = rng.random_range(MIN as i16..=MAX as i16) as isize;
+        #[cfg(target_pointer_width = "32")]
+        let value = rng.random_range(MIN as i32..=MAX as i32) as isize;
+        #[cfg(target_pointer_width = "64")]
+        let value = rng.random_range(MIN as i64..=MAX as i64) as isize;
+        #[cfg(not(any(
+            target_pointer_width = "16",
+            target_pointer_width = "32",
+            target_pointer_width = "64"
+        )))]
+        compile_error("platform has unusual (and unsupported) pointer width");
+
+        RangedIsize::new(value).expect("rand failed to generate a valid value")
+    }
+}
+
+#[cfg(feature = "rand010")]
+impl<const MIN: usize, const MAX: usize> rand010::distr::Distribution<RangedUsize<MIN, MAX>>
+    for rand010::distr::StandardUniform
+{
+    #[inline]
+    fn sample<R: rand010::Rng + ?Sized>(&self, rng: &mut R) -> RangedUsize<MIN, MAX> {
+        const {
+            assert!(MIN <= MAX);
+        }
+
+        use rand010::RngExt as _;
+
+        #[cfg(target_pointer_width = "16")]
+        let value = rng.random_range(MIN as u16..=MAX as u16) as usize;
+        #[cfg(target_pointer_width = "32")]
+        let value = rng.random_range(MIN as u32..=MAX as u32) as usize;
+        #[cfg(target_pointer_width = "64")]
+        let value = rng.random_range(MIN as u64..=MAX as u64) as usize;
+        #[cfg(not(any(
+            target_pointer_width = "16",
+            target_pointer_width = "32",
+            target_pointer_width = "64"
+        )))]
+        compile_error("platform has unusual (and unsupported) pointer width");
+
+        RangedUsize::new(value).expect("rand failed to generate a valid value")
+    }
+}
+
+#[cfg(feature = "rand010")]
+impl<const MIN: isize, const MAX: isize> rand010::distr::Distribution<RangedIsize<MIN, MAX>>
+    for rand010::distr::StandardUniform
+{
+    #[inline]
+    fn sample<R: rand010::Rng + ?Sized>(&self, rng: &mut R) -> RangedIsize<MIN, MAX> {
+        const {
+            assert!(MIN <= MAX);
+        }
+
+        use rand010::RngExt as _;
 
         #[cfg(target_pointer_width = "16")]
         let value = rng.random_range(MIN as i16..=MAX as i16) as isize;
