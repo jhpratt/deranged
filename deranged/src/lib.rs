@@ -437,6 +437,27 @@ macro_rules! impl_ranged {
                 $type::<NEW_MIN, NEW_MAX>::new(self.get())
             }
 
+            /// Narrow the range that the value may be in. **Fails to compile** if the new range is
+            /// not a subset of the current range.
+            ///
+            /// # Safety
+            ///
+            /// The value must in the range `NEW_MIN..=NEW_MAX`.
+            #[inline(always)]
+            pub const unsafe fn narrow_unchecked<
+                const NEW_MIN: $internal,
+                const NEW_MAX: $internal,
+            >(self) -> $type<NEW_MIN, NEW_MAX> {
+                const {
+                    assert!(MIN <= MAX);
+                    assert!(NEW_MIN <= NEW_MAX);
+                    assert!(NEW_MIN >= MIN);
+                    assert!(NEW_MAX <= MAX);
+                }
+                // Safety: The caller must ensure that the value is in the new range.
+                unsafe { $type::new_unchecked(self.get()) }
+            }
+
             /// Converts a string slice in a given base to an integer.
             ///
             /// The string is expected to be an optional `+` or `-` sign followed by digits. Leading
