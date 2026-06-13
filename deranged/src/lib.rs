@@ -385,6 +385,17 @@ macro_rules! impl_ranged {
                 }
             }
 
+            /// Creates a ranged integer with the given value, wrapping if it is out of range.
+            #[inline]
+            pub const fn new_wrapping(value: $internal) -> Self {
+                const { assert!(MIN <= MAX); }
+                if value > MAX {
+                    Self::MAX.wrapping_add(value - MAX)
+                } else {
+                    Self::MAX.wrapping_sub(MAX - value)
+                }
+            }
+
             /// Emit a hint to the compiler that the value is in range.
             ///
             /// In some situations, this can help the optimizer to generate better code. In edge

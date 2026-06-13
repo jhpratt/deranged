@@ -206,6 +206,13 @@ macro_rules! tests {
         )*}
 
         #[test]
+        fn new_wrapping() {$(
+            assert_eq!($t::<5, 10>::new_wrapping(11), $t::<5, 10>::MIN);
+            assert_eq!($t::<5, 10>::new_wrapping(4), $t::<5, 10>::MAX);
+            assert_eq!($t::<5, 10>::new_wrapping(9), $t::<5, 10>::new_static::<9>());
+        )*}
+
+        #[test]
         fn from_str_radix() {$(
             assert_eq!($t::<5, 10>::from_str_radix("10", 10), Ok($t::<5, 10>::MAX));
             assert_eq!($t::<5, 10>::from_str_radix("5", 10), Ok($t::<5, 10>::MIN));
