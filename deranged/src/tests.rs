@@ -597,6 +597,9 @@ macro_rules! tests {
 
         #[test]
         fn from() {$(
+            assert_eq!(<$t::<0, 10> as From<bool>>::from(false).get(), 0);
+            assert_eq!(<$t::<0, 10> as From<bool>>::from(true).get(), 1);
+
             assert_eq!($inner::from($t::<5, 10>::MAX), 10);
             assert_eq!($inner::from($t::<5, 10>::MIN), 5);
 
@@ -622,6 +625,12 @@ macro_rules! tests {
             assert_eq!("4".parse::<$t<5, 10>>(), Err(ParseIntError { kind: IntErrorKind::NegOverflow }));
             assert_eq!("11".parse::<$t<5, 10>>(), Err(ParseIntError { kind: IntErrorKind::PosOverflow }));
             assert_eq!("".parse::<$t<5, 10>>(), Err(ParseIntError { kind: IntErrorKind::Empty }));
+        )*}
+
+        #[test]
+        fn into() {$(
+            assert_eq!(<$t::<0, 1> as Into<bool>>::into($t::<0, 1>::new_static::<0>()), false);
+            assert_eq!(<$t::<0, 1> as Into<bool>>::into($t::<0, 1>::new_static::<1>()), true);
         )*}
 
         #[cfg(feature = "serde")]
