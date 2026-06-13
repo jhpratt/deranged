@@ -1,8 +1,8 @@
 extern crate std;
 
 use core::hash::Hash;
-use std::format;
 use std::prelude::rust_2021::*;
+use std::{format, panic};
 
 use crate::{
     IntErrorKind, OptionRangedI128, OptionRangedI16, OptionRangedI32, OptionRangedI64,
