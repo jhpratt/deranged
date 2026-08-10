@@ -1549,6 +1549,33 @@ macro_rules! impl_ranged {
             }
         })+
 
+        impl<const MIN: $internal, const MAX: $internal> From<bool> for $type<MIN, MAX> {
+            #[inline(always)]
+            fn from(value: bool) -> Self {
+                const {
+                    assert!(MIN <= MAX);
+                    assert!(MIN <= 0, "false cannot be represented in the range");
+                    assert!(MAX >= 1, "true cannot be represented in the range");
+                }
+
+                // Safety: The range can fit both false and true.
+                unsafe { $type::new_unchecked(value as $internal) }
+            }
+        }
+
+        impl<const MIN: $internal, const MAX: $internal> Into<bool> for $type<MIN, MAX> {
+            #[inline(always)]
+            #[allow(unused_comparisons)]
+            fn into(self) -> bool {
+                const {
+                    assert!(MIN <= MAX);
+                    assert!(MIN >= 0 && MAX <= 1, "the range contains values not representable by bool");
+                }
+
+                *self.0 == 1
+            }
+        }
+
         #[cfg(feature = "serde")]
         impl<const MIN: $internal, const MAX: $internal> serde_core::Serialize for $type<MIN, MAX> {
             #[inline(always)]
