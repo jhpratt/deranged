@@ -1075,6 +1075,54 @@ macro_rules! impl_ranged {
                     ) }
                 }
             }
+
+            /// Calculates self + rhs.
+            ///
+            /// Returns a tuple of the addition along with a boolean indicating whether an arithmetic overflow would occur.
+            /// If an overflow would have occurred then the wrapped value is returned.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[inline]
+            pub const fn overflowing_add(self, rhs: $internal) -> (Self, bool) {
+                const { assert!(MIN <= MAX); }
+
+                // Forward to internal type's impl if same as type.
+                if MIN == $internal::MIN && MAX == $internal::MAX {
+                    let (res, overflow) = self.get().overflowing_add(rhs);
+
+                    // Safety: std's wrapping methods match ranged arithmetic when the range is the internal datatype's range.
+                    return (unsafe { Self::new_unchecked(res) }, overflow)
+                }
+
+                if let Some(res) = self.checked_add(rhs) {
+                    (res, false)
+                } else {
+                    (self.wrapping_add(rhs), true)
+                }
+            }
+
+            /// Calculates self - rhs.
+            ///
+            /// Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic overflow would occur.
+            /// If an overflow would have occurred then the wrapped value is returned.
+            #[must_use = "this returns the result of the operation, without modifying the original"]
+            #[inline]
+            pub const fn overflowing_sub(self, rhs: $internal) -> (Self, bool) {
+                const { assert!(MIN <= MAX); }
+
+                // Forward to internal type's impl if same as type.
+                if MIN == $internal::MIN && MAX == $internal::MAX {
+                    let (res, overflow) = self.get().overflowing_sub(rhs);
+
+                    // Safety: std's wrapping methods match ranged arithmetic when the range is the internal datatype's range.
+                    return (unsafe { Self::new_unchecked(res) }, overflow)
+                }
+
+                if let Some(res) = self.checked_sub(rhs) {
+                    (res, false)
+                } else {
+                    (self.wrapping_sub(rhs), true)
+                }
+            }
         }
 
         impl<const MIN: $internal, const MAX: $internal> $optional_type<MIN, MAX> {

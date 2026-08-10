@@ -497,6 +497,18 @@ macro_rules! tests {
         }
 
         #[test]
+        fn overflowing_add() {$(
+            assert_eq!($t::<5, 10>::MAX.overflowing_add(0), ($t::<5, 10>::MAX, false));
+            assert_eq!($t::<5, 10>::MAX.overflowing_add(1), ($t::<5, 10>::MIN, true));
+        )*}
+
+        #[test]
+        fn overflowing_sub() {$(
+            assert_eq!($t::<5, 10>::MIN.overflowing_sub(0), ($t::<5, 10>::MIN, false));
+            assert_eq!($t::<5, 10>::MIN.overflowing_sub(1), ($t::<5, 10>::MAX, true));
+        )*}
+
+        #[test]
         fn saturating_sub() {$(
             assert_eq!($t::<5, 10>::MIN.saturating_sub(0), $t::<5, 10>::MIN);
             assert_eq!($t::<5, 10>::MIN.saturating_sub(1), $t::<5, 10>::MIN);
