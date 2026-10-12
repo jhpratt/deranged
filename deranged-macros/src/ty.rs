@@ -43,6 +43,20 @@ impl<const OPTIONAL: bool> Type<OPTIONAL> {
     pub(crate) fn from_min_max(min: &Integer, max: &Integer) -> Result<Self, TokenStream> {
         let spans = MinMaxSpan(min.span, max.span);
 
+        let min_is_not_greater_than_max = if min.is_negative {
+            !max.is_negative || min.raw_value >= max.raw_value
+        } else if max.is_negative {
+            false
+        } else {
+            min.raw_value <= max.raw_value
+        };
+        if !min_is_not_greater_than_max {
+            return Err(compile_error(
+                "maximum value must be greater than or equal to minimum value",
+                (max.span, max.span),
+            ));
+        }
+
         if let (Some(min_value), Some(max_value)) = (min.to_unsigned(), max.to_unsigned()) {
             Ok(Self(MinMax::U8(min_value, max_value), spans))
         } else if let (Some(min_value), Some(max_value)) = (min.to_unsigned(), max.to_unsigned()) {
