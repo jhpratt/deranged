@@ -594,7 +594,7 @@ macro_rules! impl_ranged {
             ///
             /// # Safety
             ///
-            /// `self` must not be zero and the result of `self / rhs` must be in the range
+            /// `rhs` must not be zero and the result of `self / rhs` must be in the range
             /// `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[track_caller]
@@ -622,8 +622,8 @@ macro_rules! impl_ranged {
             ///
             /// # Safety
             ///
-            /// `self` must not be zero and the result of `self.div_euclid(rhs)` must be in the
-            /// range `MIN..=MAX`.
+            /// `rhs` must not be zero and the result of `self.div_euclid(rhs)` must be in the range
+            /// `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[track_caller]
             #[inline(always)]
@@ -668,7 +668,7 @@ macro_rules! impl_ranged {
             ///
             /// # Safety
             ///
-            /// `self` must not be zero and the result of `self % rhs` must be in the range
+            /// `rhs` must not be zero and the result of `self % rhs` must be in the range
             /// `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[track_caller]
@@ -696,8 +696,8 @@ macro_rules! impl_ranged {
             ///
             /// # Safety
             ///
-            /// `self` must not be zero and the result of `self.rem_euclid(rhs)` must be in the
-            /// range `MIN..=MAX`.
+            /// `rhs` must not be zero and the result of `self.rem_euclid(rhs)` must be in the range
+            /// `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[track_caller]
             #[inline(always)]
