@@ -70,15 +70,13 @@ impl Integer {
     where
         T: Signed,
     {
-        self.can_be_signed()
-            .then(|| {
-                if self.is_negative {
-                    (-(self.raw_value as i128)).try_into().ok()
-                } else {
-                    (self.raw_value as i128).try_into().ok()
-                }
-            })
-            .flatten()
+        if !self.can_be_signed() {
+            return None;
+        }
+
+        to_signed_value(self.is_negative, self.raw_value)?
+            .try_into()
+            .ok()
     }
 
     /// Parse an integer literal from a token stream.
@@ -138,6 +136,18 @@ impl Integer {
     }
 }
 
+fn to_signed_value(is_negative: bool, raw_value: u128) -> Option<i128> {
+    if is_negative {
+        if raw_value == i128::MIN.unsigned_abs() {
+            Some(i128::MIN)
+        } else {
+            i128::try_from(raw_value).ok()?.checked_neg()
+        }
+    } else {
+        i128::try_from(raw_value).ok()
+    }
+}
+
 // Returns base 10 digits and suffix.
 fn parse_lit_int(is_negative: bool, s: &str, what: &str) -> Result<(u128, Suffix), String> {
     let s = s.as_bytes();
@@ -173,19 +183,14 @@ fn parse_lit_int(is_negative: bool, s: &str, what: &str) -> Result<(u128, Suffix
 
         has_digit = true;
 
-        // Check for overflow depending on the sign.
-        value = if is_negative {
-            value
-                .checked_mul(base as u128)
-                .and_then(|value| value.checked_add(digit as u128))
-                .ok_or("value too small to be represented by a primitive integer")?
-        } else {
-            (value as i128)
-                .checked_mul(base as i128)
-                .and_then(|value| value.checked_add(digit as i128))
-                .ok_or("value too large to be represented by a primitive integer")?
-                as u128
-        };
+        value = value
+            .checked_mul(base as u128)
+            .and_then(|value| value.checked_add(digit as u128))
+            .ok_or(if is_negative {
+                "value too small to be represented by a primitive integer"
+            } else {
+                "value too large to be represented by a primitive integer"
+            })?;
     }
 
     if !has_digit {
