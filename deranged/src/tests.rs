@@ -24,6 +24,21 @@ fn test_ranged_conversion() {
     // let _ : RangedI8<-4, 4> = RangedI16::<-5, 5>::new_static::<3>().into();
 }
 
+#[cfg(feature = "quickcheck")]
+#[test]
+fn quickcheck_full_width_ranges() {
+    let mut generator = quickcheck::Gen::new(100);
+
+    for _ in 0..100 {
+        let _: RangedU8<0, 255> = quickcheck::Arbitrary::arbitrary(&mut generator);
+        let _: RangedI8<{ i8::MIN }, { i8::MAX }> =
+            quickcheck::Arbitrary::arbitrary(&mut generator);
+        let _: RangedU128<0, { u128::MAX }> = quickcheck::Arbitrary::arbitrary(&mut generator);
+        let _: RangedI128<{ i128::MIN }, { i128::MAX }> =
+            quickcheck::Arbitrary::arbitrary(&mut generator);
+    }
+}
+
 macro_rules! if_signed {
     (signed $($x:tt)*) => { $($x)* };
     (unsigned $($x:tt)*) => {};

@@ -1724,12 +1724,26 @@ macro_rules! impl_ranged {
 
         #[cfg(feature = "quickcheck")]
         impl<const MIN: $internal, const MAX: $internal> quickcheck::Arbitrary for $type<MIN, MAX> {
+            #[allow(trivial_numeric_casts)] // Normalize signed and unsigned values to unsigned bits.
             #[inline]
             fn arbitrary(g: &mut quickcheck::Gen) -> Self {
                 const { assert!(MIN <= MAX); }
-                // Safety: The `rem_euclid` call and addition ensure that the value is in range.
-                unsafe {
-                    Self::new_unchecked($internal::arbitrary(g).rem_euclid(MAX - MIN + 1) + MIN)
+                if const { MIN == <$internal>::MIN && MAX == <$internal>::MAX } {
+                    // Safety: Every value of the inner type is in the full range.
+                    unsafe { Self::new_unchecked(<$internal>::arbitrary(g)) }
+                } else {
+                    let range = (MAX as $unsigned_type)
+                        .wrapping_sub(MIN as $unsigned_type)
+                        .wrapping_add(1);
+                    let offset = (<$internal>::arbitrary(g) as $unsigned_type)
+                        .wrapping_sub(MIN as $unsigned_type)
+                        % range;
+                    let value = (MIN as $unsigned_type).wrapping_add(offset) as $internal;
+
+                    // Safety: The offset is less than the range width, so the value is in range.
+                    unsafe {
+                        Self::new_unchecked(value)
+                    }
                 }
             }
 
