@@ -1,5 +1,18 @@
 name: Build
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  __MSRV: &msrv "1.85.0"
+  CHECK_SHARDS: 8 # for *each* MSRV and stable, so double for total check jobs
+defaults:
+  run:
+    shell: bash
+
+permissions: {}
+
 on:
   push:
     branches: ["**"]
@@ -11,90 +24,207 @@ on:
   pull_request:
     paths-ignore:
       - "**.md"
-      - LICENSE-Apache
-      - LICENSE-MIT
-  workflow_dispatch:
+      - "**/LICENSE-Apache"
+      - "**/LICENSE-MIT"
+      - .github/FUNDING.yml
+      - .editorconfig
+      - .gitignore
 
 jobs:
-  powerset:
-    name: Type checking (${{ matrix.rust.name }})
-    runs-on: ubuntu-latest
+  compute-shards:
+    name: Compute shards
+    runs-on: &default-os ubuntu-latest
+    if: &pr-or-push (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push'
+    outputs:
+      check-matrix: ${{ steps.build-check-matrix.outputs.matrix }}
+    steps:
+      - name: Build check matrix
+        id: build-check-matrix
+        run: |
+          MATRIX=$(jq -c -n \
+            --argjson shards "${{ env.CHECK_SHARDS }}" \
+            --arg msrv "${{ env.__MSRV }}" \
+            '[
+              range(1; $shards + 1) as $shard |
+              {shard: $shard, version: $msrv, name: "MSRV"},
+              {shard: $shard, version: "stable", name: "stable"}
+            ]')
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  check-targets:
+    name: Type checking (${{ matrix.name }}, shard ${{ matrix.shard }})
+    runs-on: *default-os
+    permissions:
+      contents: read
+    needs: compute-shards
+    if: *pr-or-push
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.compute-shards.outputs.check-matrix) }}
+
+    steps:
+      - &checkout
+        name: Checkout sources
+        uses: actions/checkout@v7
+
+      - &cache
+        name: Cache cargo output
+        uses: Swatinem/rust-cache@v2
+
+      - parallel:
+          - name: Install toolchain
+            uses: dtolnay/rust-toolchain@master
+            with:
+              toolchain: ${{ matrix.version }}
+
+          - name: Install cargo-hack
+            uses: taiki-e/install-action@cargo-hack
+
+      - name: Generate shard commands
+        id: generate
+        run: |
+          set -euo pipefail
+
+          shard="${{ matrix.shard }}"
+          shards="${{ env.CHECK_SHARDS }}"
+          output=$(mktemp)
+
+          mapfile -t cmds < <(
+            cargo hack check --print-command-list -p deranged --no-dev-deps --feature-powerset --optional-deps --exclude-features default
+          )
+          # Assign commands to shards and output those for this shard
+          shard_loads=()
+
+          for cmd in "${cmds[@]}"; do
+            min_load=${shard_loads[0]:-0}
+            for ((i = 1; i < shards; i++)); do
+              if (( ${shard_loads[i]:-0} < min_load )); then
+                min_load=${shard_loads[i]:-0}
+              fi
+            done
+
+            chosen=0
+            for ((i = 0; i < shards; i++)); do
+              if (( ${shard_loads[i]:-0} != min_load )); then continue; fi
+              chosen=$i
+            done
+
+            (( ++shard_loads[chosen] ))
+            if (( chosen == shard - 1 )); then
+              printf '%s\n' "$cmd"
+            fi
+          done > "$output"
+
+          SHARD_COMMANDS=$(wc -l < "$output")
+          echo "count=$SHARD_COMMANDS" >> "$GITHUB_OUTPUT"
+          echo "path=$output" >> "$GITHUB_OUTPUT"
+
+          if [ "$SHARD_COMMANDS" -eq 0 ]; then echo "No commands for this shard"; exit 0; fi
+
+      - name: Run shard commands
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARD_COMMANDS: ${{ steps.generate.outputs.count }}
+        run: |
+          set -euo pipefail
+
+          count=0
+          while IFS= read -r cmd; do
+            [ -z "$cmd" ] && continue
+            count=$((count + 1))
+            echo "::group::[$count/$SHARD_COMMANDS] $cmd"
+            eval "$cmd"
+            echo "::endgroup::"
+          done < "${{ steps.generate.outputs.path }}"
+
+  test:
+    name: Test (${{ matrix.rust.name }})
+    runs-on: *default-os
+    permissions:
+      contents: read
+    if: *pr-or-push
     strategy:
       matrix:
         rust:
-          - { version: "1.85.0", name: MSRV }
+          - { version: *msrv, name: MSRV }
           - { version: stable, name: stable }
 
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
+      - *checkout
+      - *cache
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust.version }}
 
-      - name: Install cargo-hack
-        shell: bash
-        run: |
-          curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz \
-          | tar xzf - -C ~/.cargo/bin
+      - name: Test
+        run: cargo test -p deranged --all-features
 
-      - name: Cache cargo output
-        uses: Swatinem/rust-cache@v2
-
-      - name: Type checking
-        run: |
-          cargo hack check --feature-powerset --exclude-features default
-
-  tests:
-    name: Tests
-    runs-on: ubuntu-latest
-
+  misc:
+    name: Miscellaneous
+    runs-on: *default-os
+    timeout-minutes: 10 # this step has hung before
+    permissions:
+      contents: read
+      statuses: write
+    if: *pr-or-push
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
+      - *checkout
+      - *cache
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Run test suite
-        run: cargo test
-
-  formatting:
-    name: Formatting
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install toolchain
+      - name: Install nightly toolchain
+        id: nightly-toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
+        background: true
 
-      - name: Check formatting
-        run: cargo fmt -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install toolchain
+      - name: Install stable toolchain
+        id: stable-toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+          targets: x86_64-unknown-linux-gnu, x86_64-pc-windows-gnu
+        background: true
 
-      - name: Cache
-        uses: Swatinem/rust-cache@v2
+      - name: Wait for nightly toolchain to be available
+        wait: [nightly-toolchain]
+
+      - name: Check formatting
+        id: check-formatting
+        run: cargo +nightly fmt --all --check
+
+      - name: Generate documentation
+        id: generate-docs
+        run: cargo +nightly doc --workspace --all-features --no-deps
+        env:
+          RUSTDOCFLAGS: --cfg docsrs
+
+      - name: Wait for stable toolchain to be available
+        wait: [stable-toolchain]
 
       - name: Run clippy
-        run: cargo clippy --all-features
+        id: run-clippy
+        run: cargo +stable clippy --all-features --all-targets
+
+      # Test with default feature set.
+      - name: Doc test (default features)
+        id: doc-test-default
+        run: cargo +stable test -p deranged --doc
+
+  final:
+    name: Overall status
+    runs-on: *default-os
+    needs: [check-targets, test, misc]
+    if: always()
+    steps:
+      - name: Report final build status
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS_JSON" | jq -e '
+            to_entries |
+            map(select(.value.result == "failure" or .value.result == "cancelled")) |
+            length == 0
+          '
