@@ -90,3 +90,19 @@ pub(crate) fn parse_comma(iter: &mut impl Iterator<Item = TokenTree>) -> Result<
         None => Err(compile_error("expected maximum value", None)),
     }
 }
+
+/// Reject tokens remaining after a macro's expected input.
+pub(crate) fn ensure_exhausted(
+    iter: &mut impl Iterator<Item = TokenTree>,
+) -> Result<(), TokenStream> {
+    let Some(first) = iter.next() else {
+        return Ok(());
+    };
+
+    let first_span = first.span();
+    let last_span = iter.last().map_or(first_span, |token| token.span());
+    Err(compile_error(
+        "unexpected tokens after maximum value",
+        (first_span, last_span),
+    ))
+}
