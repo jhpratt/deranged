@@ -651,12 +651,29 @@ macro_rules! tests {
             let val = $opt::<5, 10>::None;
             let serialized = serde_json::to_string(&val)?;
             assert_eq!(serialized, "null");
+            let deserialized: $opt<5, 10> = serde_json::from_str(&serialized)?;
+            assert_eq!(deserialized, val);
 
             assert!(serde_json::from_str::<$opt<5, 10>>("").is_err());
             assert!(serde_json::from_str::<$opt<5, 10>>("4").is_err());
             assert!(serde_json::from_str::<$opt<5, 10>>("11").is_err());
             )*
             Ok(())
+        }
+
+        #[cfg(feature = "serde")]
+        #[test]
+        fn serde_option_tokens() {
+            use serde_test2::{assert_tokens, Token};
+
+            assert_tokens(
+                &OptionRangedU8::<5, 10>::Some(RangedU8::<5, 10>::MAX),
+                &[Token::Some, Token::U8(10)],
+            );
+            assert_tokens(
+                &OptionRangedU8::<5, 10>::None,
+                &[Token::None],
+            );
         }
 
         #[cfg(feature = "rand08")]

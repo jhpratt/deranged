@@ -1609,7 +1609,10 @@ macro_rules! impl_ranged {
                 -> Result<Self, D::Error>
             {
                 const { assert!(MIN <= MAX); }
-                Ok(Self::Some($type::<MIN, MAX>::deserialize(deserializer)?))
+                match Option::<$type<MIN, MAX>>::deserialize(deserializer)? {
+                    Some(value) => Ok(Self::Some(value)),
+                    None => Ok(Self::None),
+                }
             }
         }
 

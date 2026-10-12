@@ -59,6 +59,7 @@ dependencies = [
  "rand 0.9.0",
  "serde_core",
  "serde_json",
+ "serde_test2",
 ]
 
 [[package]]
@@ -369,6 +370,15 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serde_test2"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95a9eac4d4fc2509eef1f6d4f03b7ee3834fe055349ba336ab5388206176cb30"
+dependencies = [
+ "serde_core",
 ]
 
 [[package]]
