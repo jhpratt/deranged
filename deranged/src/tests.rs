@@ -24,6 +24,21 @@ fn test_ranged_conversion() {
     // let _ : RangedI8<-4, 4> = RangedI16::<-5, 5>::new_static::<3>().into();
 }
 
+#[test]
+fn optional_cross_range_equality() {
+    let none = OptionRangedU8::<0, 10>::None;
+    let some_max = OptionRangedU8::<5, { u8::MAX }>::Some(RangedU8::<5, { u8::MAX }>::MAX);
+    assert_ne!(none, some_max);
+    assert_eq!(none.partial_cmp(&some_max), Some(core::cmp::Ordering::Less));
+
+    let other_none = OptionRangedU8::<5, 10>::None;
+    assert_eq!(none, other_none);
+    assert_eq!(
+        none.partial_cmp(&other_none),
+        Some(core::cmp::Ordering::Equal)
+    );
+}
+
 #[cfg(feature = "quickcheck")]
 #[test]
 fn quickcheck_full_width_ranges() {

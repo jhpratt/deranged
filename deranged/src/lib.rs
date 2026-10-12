@@ -1283,7 +1283,7 @@ macro_rules! impl_ranged {
                     assert!(MIN_A <= MAX_A);
                     assert!(MIN_B <= MAX_B);
                 }
-                self.inner() == other.inner()
+                self.get().map(|value| value.get()) == other.get().map(|value| value.get())
             }
         }
 
