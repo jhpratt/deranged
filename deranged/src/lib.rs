@@ -663,20 +663,20 @@ macro_rules! impl_ranged {
                 Self::new(const_try_opt!(self.get().checked_rem(rhs)))
             }
 
-            /// Unchecked remainder. Computes `self % rhs`, assuming that `rhs != 0` and that the
-            /// result is in range.
+            /// Unchecked remainder. Computes `self % rhs`, assuming that safety invariants are
+            /// upheld.
             ///
             /// # Safety
             ///
-            /// `rhs` must not be zero and the result of `self % rhs` must be in the range
-            /// `MIN..=MAX`.
+            /// `rhs` must not be zero, the division must not overflow, and the result must be in
+            /// range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_rem(self, rhs: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
-                // Safety: The caller must ensure that the result is in range and that `rhs` is not
-                // zero.
+                // Safety: The caller must ensure that the result is in range, `rhs` is not zero,
+                // and the remainder operation does not overflow.
                 unsafe {
                     Self::new_unchecked(self.get().checked_rem(rhs).unwrap_unchecked())
                 }
@@ -691,20 +691,20 @@ macro_rules! impl_ranged {
                 Self::new(const_try_opt!(self.get().checked_rem_euclid(rhs)))
             }
 
-            /// Unchecked Euclidean remainder. Computes `self.rem_euclid(rhs)`, assuming that
-            /// `rhs != 0` and that the result is in range.
+            /// Unchecked Euclidean remainder. Computes `self.rem_euclid(rhs)`, assuming that safety
+            /// invariants are upheld.
             ///
             /// # Safety
             ///
-            /// `rhs` must not be zero and the result of `self.rem_euclid(rhs)` must be in the range
-            /// `MIN..=MAX`.
+            /// `rhs` must not be zero, the division must not overflow, and the result must be in
+            /// range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_rem_euclid(self, rhs: $internal) -> Self {
                 const { assert!(MIN <= MAX); }
-                // Safety: The caller must ensure that the result is in range and that `rhs` is not
-                // zero.
+                // Safety: The caller must ensure that the result is in range, `rhs` is not zero,
+                // and the remainder operation does not overflow.
                 unsafe {
                     Self::new_unchecked(
                         self.get().checked_rem_euclid(rhs).unwrap_unchecked()
@@ -769,13 +769,15 @@ macro_rules! impl_ranged {
             ///
             /// # Safety
             ///
-            /// The result of `self << rhs` must be in the range `MIN..=MAX`.
+            /// `rhs` must be less than the number of bits in the inner integer type, and the
+            /// result of `self << rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
                 const { assert!(MIN <= MAX); }
-                // Safety: The caller must ensure that the result is in range.
+                // Safety: The caller must ensure that the shift count is valid and the result is
+                // in range.
                 unsafe {
                     // TOD(MSRV 1.93) use `unchecked_shl`
                     Self::new_unchecked(self.get().checked_shl(rhs).unwrap_unchecked())
@@ -795,13 +797,15 @@ macro_rules! impl_ranged {
             ///
             /// # Safety
             ///
-            /// The result of `self >> rhs` must be in the range `MIN..=MAX`.
+            /// `rhs` must be less than the number of bits in the inner integer type, and the
+            /// result of `self >> rhs` must be in the range `MIN..=MAX`.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[track_caller]
             #[inline(always)]
             pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
                 const { assert!(MIN <= MAX); }
-                // Safety: The caller must ensure that the result is in range.
+                // Safety: The caller must ensure that the shift count is valid and the result is
+                // in range.
                 unsafe {
                     // TODO(MSRV 1.93) use `unchecked_shr`
                     Self::new_unchecked(self.get().checked_shr(rhs).unwrap_unchecked())
