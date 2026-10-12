@@ -528,8 +528,8 @@ macro_rules! impl_ranged {
                 }
             }
 
-            /// Checked integer addition. Computes `self - rhs`, returning `None` if the resulting
-            /// value is out of range.
+            /// Checked integer subtraction. Computes `self - rhs`, returning `None` if the
+            /// resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_sub(self, rhs: $internal) -> Option<Self> {
@@ -554,8 +554,8 @@ macro_rules! impl_ranged {
                 }
             }
 
-            /// Checked integer addition. Computes `self * rhs`, returning `None` if the resulting
-            /// value is out of range.
+            /// Checked integer multiplication. Computes `self * rhs`, returning `None` if the
+            /// resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
             pub const fn checked_mul(self, rhs: $internal) -> Option<Self> {
@@ -580,7 +580,7 @@ macro_rules! impl_ranged {
                 }
             }
 
-            /// Checked integer addition. Computes `self / rhs`, returning `None` if `rhs == 0` or
+            /// Checked integer division. Computes `self / rhs`, returning `None` if `rhs == 0` or
             /// if the resulting value is out of range.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
@@ -897,7 +897,7 @@ macro_rules! impl_ranged {
             }
 
             if_signed!($is_signed
-            /// Saturating integer negation. Computes `self - rhs`, saturating at the numeric
+            /// Saturating integer negation. Computes `-self`, saturating at the numeric
             /// bounds.
             #[must_use = "this returns the result of the operation, without modifying the original"]
             #[inline]
