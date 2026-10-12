@@ -1,4 +1,4 @@
-msrv = "1.85"
+msrv = "1.85.0"
 
 missing-docs-in-crate-items = true
 disallowed-macros = [
