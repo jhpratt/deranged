@@ -213,10 +213,81 @@ jobs:
         id: doc-test-default
         run: cargo +stable test -p deranged --doc
 
+  create-tag:
+    name: Create release tag
+    needs: [check-targets, test, misc]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        contains(github.event.commits.*.modified.*, 'deranged/Cargo.toml') ||
+        contains(github.event.commits.*.added.*, 'deranged/Cargo.toml') ||
+        contains(github.event.commits.*.removed.*, 'deranged/Cargo.toml')
+      )
+    runs-on: *default-os
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Tag version bumps
+        id: tag
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          previous_version=$(git show "$BEFORE_SHA:deranged/Cargo.toml" \
+            | python3 -c 'import sys, tomllib; print(tomllib.load(sys.stdin.buffer)["package"]["version"])')
+          current_version=$(python3 -c 'import tomllib; print(tomllib.load(open("deranged/Cargo.toml", "rb"))["package"]["version"])')
+
+          if [[ "$previous_version" == "$current_version" ]]; then
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          tag="v$current_version"
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            if [[ "$(git rev-list -n 1 "$tag")" != "$(git rev-parse HEAD)" ]]; then
+              echo "Tag $tag already exists at a different commit" >&2
+              exit 1
+            fi
+          else
+            git tag "$tag"
+            git push origin "refs/tags/$tag"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Create release
+    needs: [check-targets, test, misc, create-tag]
+    if: needs.create-tag.outputs.tag != ''
+    uses: ./.github/workflows/release.yaml
+    permissions:
+      contents: write
+      id-token: write
+    with:
+      prerelease: ${{ contains(needs.create-tag.outputs.tag, '-') }}
+      user-agent: "deranged crate GitHub CI"
+      crates-in-order: >
+        deranged-macros
+        deranged
+      tag: ${{ needs.create-tag.outputs.tag }}
+
   final:
     name: Overall status
     runs-on: *default-os
-    needs: [check-targets, test, misc]
+    needs: [check-targets, test, misc, create-tag, release]
     if: always()
     steps:
       - name: Report final build status
@@ -225,6 +296,10 @@ jobs:
         run: |
           echo "$NEEDS_JSON" | jq -e '
             to_entries |
+            map(if .key == "release" and .value.result == "skipped"
+                then .value.result = "success"
+                else .
+                end) |
             map(select(.value.result == "failure" or .value.result == "cancelled")) |
             length == 0
           '
