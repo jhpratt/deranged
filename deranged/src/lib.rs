@@ -1636,17 +1636,17 @@ macro_rules! impl_ranged {
             {
                 const { assert!(MIN <= MAX); }
                 let internal = <$internal>::deserialize(deserializer)?;
-                Self::new(internal).ok_or_else(||
+                Self::new(internal).ok_or_else(|| {
+                    #[cfg(feature = "alloc")]
+                    let s = alloc::format!("an integer in the range {}..={}", MIN, MAX);
+                    #[cfg(not(feature = "alloc"))]
+                    let s = "an integer in the valid range";
+
                     <D::Error as serde_core::de::Error>::invalid_value(
                         serde_core::de::Unexpected::Other("integer"),
-                        #[cfg(feature = "alloc")] {
-                            &alloc::format!("an integer in the range {}..={}", MIN, MAX).as_ref()
-                        },
-                        #[cfg(not(feature = "alloc"))] {
-                            &"an integer in the valid range"
-                        }
+                        &s.as_ref(),
                     )
-                )
+                })
             }
         }
 
