@@ -2,7 +2,7 @@
 name = "deranged"
 version = "0.5.8"
 authors = ["Jacob Pratt <jacob@jhpratt.dev>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.85.0"
 repository = "https://github.com/jhpratt/deranged"
 keywords = ["integer", "int", "range"]
