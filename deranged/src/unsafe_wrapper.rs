@@ -3,6 +3,7 @@
 
 /// A value that is safe to use, but is unsafe to construct or mutate.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
 pub(crate) struct Unsafe<T>(T);
 
 impl<T: core::fmt::Debug> core::fmt::Debug for Unsafe<T> {
